@@ -2,10 +2,9 @@
 
 ## Setup
 ```bash
-# run in the repo root (docs/ and CLAUDE.md already exist; keep them)
-npm create vite@latest . -- --template react-ts
-npm i
-npm i -D vitest @testing-library/react @testing-library/user-event jsdom eslint
+# already scaffolded (create-vite react-ts template, oxlint for linting)
+nvm use
+npm install
 ```
 Node 24 LTS (pinned in `.nvmrc`; use `nvm use`). The output is a fully static site (`dist/`), deployed via Docker/nginx on Coolify (see below).
 

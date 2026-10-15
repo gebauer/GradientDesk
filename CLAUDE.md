@@ -57,4 +57,4 @@ Vite + React 19 (latest stable) + TypeScript (strict). Node 24 LTS (`.nvmrc`). P
 - `npm run dev`: dev server
 - `npm test`: unit and golden-file tests
 - `npm run build`: static build to `dist/`
-- `npm run lint`: ESLint + `tsc --noEmit`
+- `npm run lint`: oxlint + `tsc -b` (type check)

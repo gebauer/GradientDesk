@@ -1,0 +1,77 @@
+/* Design tokens — see docs/SPEC.md "Design Tokens". Keep in sync. */
+:root {
+  /* Text */
+  --ink: #1d1d1c;
+  --text-secondary: #55554f;
+  --text-muted: #6b6b68;
+  --chart-flow: #8a8a86;
+
+  /* Surfaces */
+  --canvas: #f5f5f4;
+  --surface: #ffffff;
+  --surface-footer: #fafaf9;
+  --row-selected: #f3f3f1;
+  --step-active: #f0f0ee;
+
+  /* Borders */
+  --border-frame: #dcdcd8;
+  --border-input: #d0d0cc;
+  --border-button: #cfcfcb;
+  --border-divider: #e4e4e1;
+  --border-row: #eeeeeb;
+  --border-row-alt: #f0f0ed;
+
+  /* Code block */
+  --code-bg: #1f1f1e;
+  --code-text: #e8e8e5;
+
+  /* Warning */
+  --warn-line: oklch(0.6 0.15 25);
+  --warn-text: oklch(0.48 0.15 25);
+
+  /* Phase hues: oklch(0.72 0.12 H) */
+  --phase-equil: oklch(0.72 0.12 240);
+  --phase-sample: oklch(0.72 0.12 300);
+  --phase-wash: oklch(0.72 0.12 190);
+  --phase-elution: oklch(0.72 0.12 40);
+  --phase-strip: oklch(0.72 0.12 95);
+
+  /* Type */
+  --font-sans: "Helvetica Neue", Helvetica, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, Menlo, Consolas, monospace;
+
+  /* Radius */
+  --radius-swatch: 2px;
+  --radius-control: 4px;
+  --radius-step: 5px;
+  --radius-card: 6px;
+
+  /* Shadow (popover only) */
+  --shadow-popover: 0 10px 28px rgba(0, 0, 0, 0.14);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  min-width: 1280px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
