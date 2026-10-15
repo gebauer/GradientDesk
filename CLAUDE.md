@@ -51,7 +51,7 @@ Vite + React 19 (latest stable) + TypeScript (strict). Node 24 LTS (`.nvmrc`). P
 - ÄKTA prime and prime plus are treated as identical; no separate system variant.
 - Seed column library comes from `docs/data/columns-source.de.csv`; values are unverified until checked against datasheets. Unknown max flow is `null`, never a guess.
 - Applications: IMAC, affinity, IEX, HIC, SEC (incl. desalting), column equilibration. The affinity and HIC templates are proposals pending review.
-- The PrimeView txt layout stays preliminary until a real sample file is available.
+- PrimeView txt export/import (`primeview.ts`, golden files) is on hold until the owner provides a real PrimeView sample file. Don't implement it from the preliminary layout in SPEC.md.
 - License: MIT.
 
 ## Commands
