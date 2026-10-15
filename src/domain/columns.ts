@@ -148,3 +148,51 @@ export function searchColumns(columns: readonly Column[], query: string): Column
 export function customRecFlow(maxFlow: number): number {
   return round1(maxFlow * 0.5)
 }
+
+/** Column type filter on the column step; preset from the application. */
+export type ColumnType = 'all' | 'imac' | 'affinity' | 'iex' | 'hic' | 'sec'
+
+export const COLUMN_TYPES: readonly { id: ColumnType; label: string }[] = [
+  { id: 'all', label: 'All types' },
+  { id: 'imac', label: 'IMAC' },
+  { id: 'affinity', label: 'Affinity' },
+  { id: 'iex', label: 'Ion exchange' },
+  { id: 'hic', label: 'HIC' },
+  { id: 'sec', label: 'SEC / desalting' },
+]
+
+/** Type preset for an application: its own type, or all types for General and Column equilibration. */
+export function defaultColumnType(app: ApplicationId): ColumnType {
+  return COLUMN_TYPES.some((t) => t.id === app) ? (app as ColumnType) : 'all'
+}
+
+/** Vendor filter value for custom columns. */
+export const CUSTOM_VENDOR = 'Custom'
+
+const vendorOf = (c: Column) => (c.custom ? CUSTOM_VENDOR : c.manufacturer)
+
+/** Columns of a type; custom columns belong to every type. */
+export function columnsOfType(columns: readonly Column[], type: ColumnType): Column[] {
+  return columns.filter((c) => type === 'all' || c.custom || c.apps.includes(type))
+}
+
+/** Vendors with their column counts, most columns first; custom columns last. */
+export function vendorCounts(columns: readonly Column[]): { vendor: string; count: number }[] {
+  const counts = new Map<string, number>()
+  for (const c of columns) counts.set(vendorOf(c), (counts.get(vendorOf(c)) ?? 0) + 1)
+  return [...counts]
+    .map(([vendor, count]) => ({ vendor, count }))
+    .sort((a, b) => Number(a.vendor === CUSTOM_VENDOR) - Number(b.vendor === CUSTOM_VENDOR) || b.count - a.count || a.vendor.localeCompare(b.vendor))
+}
+
+export interface ColumnFilter {
+  type: ColumnType
+  /** null = all vendors */
+  vendor: string | null
+  query: string
+}
+
+export function filterColumns(columns: readonly Column[], f: ColumnFilter): Column[] {
+  const byVendor = columnsOfType(columns, f.type).filter((c) => f.vendor === null || vendorOf(c) === f.vendor)
+  return searchColumns(byVendor, f.query)
+}

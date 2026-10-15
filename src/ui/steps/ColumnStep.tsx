@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent } from 'react'
-import { columnsFor, searchColumns } from '../../domain/columns'
+import { COLUMN_TYPES, columnsOfType, defaultColumnType, filterColumns, vendorCounts, type ColumnType } from '../../domain/columns'
 import { APPLICATIONS } from '../../domain/templates'
 import { allColumns, type Action, type State } from '../../state/store'
 import { fmt } from '../format'
@@ -9,9 +9,15 @@ const EMPTY = { name: '', cv: '', flow: '', p: '' }
 
 export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Action) => void }) {
   const app = APPLICATIONS.find((a) => a.id === state.app)
-  const listed = columnsFor(state.app, allColumns(state))
+  const all = allColumns(state)
+  const [type, setType] = useState<ColumnType>(() => defaultColumnType(state.app))
+  const [vendorPick, setVendor] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const cols = searchColumns(listed, query)
+  const vendors = vendorCounts(columnsOfType(all, type))
+  // A vendor with no columns of the chosen type falls back to all vendors.
+  const vendor = vendors.some((v) => v.vendor === vendorPick) ? vendorPick : null
+  const cols = filterColumns(all, { type, vendor, query })
+  const filtered = cols.length !== all.length
   const [draft, setDraft] = useState(EMPTY)
   const set = (k: keyof typeof EMPTY) => (e: ChangeEvent<HTMLInputElement>) => setDraft((d) => ({ ...d, [k]: e.target.value }))
 
@@ -37,21 +43,49 @@ export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Ac
         </button>
       </StepHeader>
 
-      <div className="col-search">
-        <input
-          type="search"
-          className="input"
-          aria-label="Search columns"
-          placeholder="Search by name, manufacturer or size, e.g. superdex 200, bio-rad, 5 ml"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') setQuery('')
-          }}
-        />
-        <span className="muted" aria-live="polite">
-          {query ? `${cols.length} of ${listed.length} columns` : `${listed.length} columns`}
-        </span>
+      <div className="col-filters">
+        <div className="col-search">
+          <label className="col-type">
+            <span className="visually-hidden">Column type</span>
+            <select className="input" value={type} onChange={(e) => setType(e.target.value as ColumnType)}>
+              {COLUMN_TYPES.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <input
+            type="search"
+            className="input"
+            aria-label="Search columns"
+            placeholder="Search by name, manufacturer or size, e.g. superdex 200, 5 ml"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setQuery('')
+            }}
+          />
+          <span className="muted" aria-live="polite">
+            {filtered ? `${cols.length} of ${all.length} columns` : `${all.length} columns`}
+          </span>
+        </div>
+        <div className="pills" role="group" aria-label="Vendor">
+          <button type="button" className={`pill${vendor === null ? ' on' : ''}`} aria-pressed={vendor === null} onClick={() => setVendor(null)}>
+            All vendors
+          </button>
+          {vendors.map((v) => (
+            <button
+              key={v.vendor}
+              type="button"
+              className={`pill${vendor === v.vendor ? ' on' : ''}`}
+              aria-pressed={vendor === v.vendor}
+              onClick={() => setVendor(vendor === v.vendor ? null : v.vendor)}
+            >
+              {v.vendor} <span className="pill-count">{v.count}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="card col-table" role="radiogroup" aria-label="Column">
@@ -118,7 +152,7 @@ export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Ac
             </div>
           )
         })}
-        {cols.length === 0 && <div className="col-empty">No columns match “{query}”.</div>}
+        {cols.length === 0 && <div className="col-empty">{query ? `No columns match “${query}”.` : 'No columns for this type and vendor.'}</div>}
       </div>
 
       <form

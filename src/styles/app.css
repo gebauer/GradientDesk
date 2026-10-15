@@ -967,3 +967,52 @@ select.input {
   width: 240px;
   height: 34px;
 }
+
+/* ---------- Column filters ---------- */
+
+.col-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: none;
+}
+
+.col-type {
+  flex: none;
+  width: 170px;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pill {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border-button);
+  border-radius: 14px;
+  background-color: var(--surface);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pill:hover {
+  background-image: linear-gradient(rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.04));
+}
+
+.pill.on {
+  background-color: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.pill-count {
+  margin-left: 4px;
+  color: var(--text-muted);
+}
+
+.pill.on .pill-count {
+  color: rgba(255, 255, 255, 0.7);
+}

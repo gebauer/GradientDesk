@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { columnsFor, defaultRecFlow, searchColumns, SEED_COLUMNS } from '../src/domain/columns'
+import { columnsFor, columnsOfType, defaultColumnType, defaultRecFlow, filterColumns, searchColumns, SEED_COLUMNS, vendorCounts } from '../src/domain/columns'
 import type { ApplicationId, Column } from '../src/domain/types'
 
 const byName = (name: string): Column => {
@@ -77,5 +77,39 @@ describe('column search', () => {
 
   test('no match gives an empty list', () => {
     expect(names('zzz')).toEqual([])
+  })
+})
+
+describe('column filters', () => {
+  const custom: Column = { id: 'my', name: 'My gravity column', manufacturer: '', cv: 2, flow: 4, rec: 2, p: 0.3, apps: [], custom: true }
+  const all = [...SEED_COLUMNS, custom]
+
+  test('type preset follows the application', () => {
+    expect(defaultColumnType('imac')).toBe('imac')
+    expect(defaultColumnType('sec')).toBe('sec')
+    expect(defaultColumnType('general')).toBe('all')
+    expect(defaultColumnType('equil')).toBe('all')
+  })
+
+  test('type, vendor and search combine; custom columns are in every type', () => {
+    expect(filterColumns(all, { type: 'all', vendor: null, query: '' })).toHaveLength(102)
+    expect(filterColumns(all, { type: 'imac', vendor: null, query: '' })).toHaveLength(23)
+    expect(filterColumns(all, { type: 'imac', vendor: 'Bio-Rad', query: '' }).map((c) => c.name)).toEqual([
+      'EconoFit Profinity IMAC 1 ml', 'EconoFit Profinity IMAC 5 ml', 'EconoFit Nuvia IMAC 1 ml', 'EconoFit Nuvia IMAC 5 ml',
+      'Bio-Scale Mini Profinity IMAC 1 ml', 'Bio-Scale Mini Profinity IMAC 5 ml', 'Bio-Scale Mini Nuvia IMAC 1 ml', 'Bio-Scale Mini Nuvia IMAC 5 ml',
+    ])
+    expect(filterColumns(all, { type: 'imac', vendor: 'Bio-Rad', query: 'econofit 5' })).toHaveLength(2)
+    expect(filterColumns(all, { type: 'hic', vendor: 'Custom', query: '' })).toEqual([custom])
+  })
+
+  test('vendor counts: most columns first, custom last', () => {
+    expect(vendorCounts(columnsOfType(all, 'imac'))).toEqual([
+      { vendor: 'Bio-Rad', count: 8 },
+      { vendor: 'Cytiva', count: 8 },
+      { vendor: 'Qiagen', count: 2 },
+      { vendor: 'Takara Bio', count: 2 },
+      { vendor: 'Thermo Fisher', count: 2 },
+      { vendor: 'Custom', count: 1 },
+    ])
   })
 })

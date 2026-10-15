@@ -86,3 +86,23 @@ test('column search filters the table', async () => {
   ])
   expect(screen.getByText('3 of 101 columns')).toBeTruthy()
 })
+
+test('column type is preset from the application and vendor pills filter', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await user.click(screen.getByRole('button', { name: /Affinity · IMAC/ }))
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  const type = screen.getByRole('combobox', { name: 'Column type' }) as HTMLSelectElement
+  expect(type.value).toBe('imac')
+  expect(screen.getAllByRole('radio')).toHaveLength(22)
+
+  const vendors = within(screen.getByRole('group', { name: 'Vendor' }))
+  await user.click(vendors.getByRole('button', { name: /Bio-Rad/ }))
+  expect(screen.getAllByRole('radio')).toHaveLength(8)
+  expect(screen.getByText('8 of 101 columns')).toBeTruthy()
+
+  await user.selectOptions(type, 'all')
+  expect(screen.getAllByRole('radio').length).toBeGreaterThan(8)
+  await user.click(vendors.getByRole('button', { name: 'All vendors' }))
+  expect(screen.getAllByRole('radio')).toHaveLength(101)
+})

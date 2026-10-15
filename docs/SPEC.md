@@ -55,8 +55,12 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
   - Header: 11 px uppercase, letter-spacing .05em, `#6b6b68`.
   - Row: 14 px, padding 12 × 16, bottom border `#eeeeeb`, selected background `#f3f3f1`. The radio is a 14 px ring with an 8 px dot.
   - Custom columns show the "Custom" tag and an × button to remove them.
-  - Only columns for the current application are listed. "General" and "Column equilibration" list all columns. Custom columns appear for every application.
-- **Search** above the table: input (max 480 px wide, placeholder "Search by name, manufacturer or size, e.g. superdex 200, bio-rad, 5 ml") and a muted count "n of m columns". Every word must appear in name, manufacturer or size ("5 ml"), case-insensitive. Escape clears it. Empty result: "No columns match “…”." in the table.
+  - **Filters** above the table, preset from the application but always changeable (picking a column of another type keeps the loaded program):
+  - **Type** select (170 px): All types, IMAC, Affinity, Ion exchange, HIC, SEC / desalting. Preset to the step 1 application; General and Column equilibration preset to All types. Custom columns belong to every type.
+  - **Search** input (max 480 px, placeholder "Search by name, manufacturer or size, e.g. superdex 200, 5 ml"). Every word must appear in name, manufacturer or size ("5 ml"), case-insensitive. Escape clears it.
+  - Muted count "n of m columns" (m = all columns).
+  - **Vendor pills** below: "All vendors" plus one pill per vendor that has columns of the chosen type, with its count, most columns first, "Custom" last. Single select; clicking the active pill returns to All vendors. Pill: 28 px high, radius 14, border `#cfcfcb`, 12 px; active = ink fill, white text.
+  - Empty result: "No columns match “…”." or "No columns for this type and vendor."
 - Card "Add custom column", right label "Saved in this browser only". Grid `2fr 1fr 1fr 1fr auto`: Name, CV (ml), Max flow, Pressure (MPa), button "Add to library" (outline). Name, CV and flow are required. The new column is selected immediately.
 - Changing the column clamps each phase's flow to the column's maximum flow. Columns without a max flow (`flow: null`) don't clamp.
 
