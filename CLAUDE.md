@@ -16,7 +16,7 @@ Vite + React 19 (latest stable) + TypeScript (strict). Node 24 LTS (`.nvmrc`). P
 
 ## Rules
 - Keep domain logic **pure and framework-free** in `src/domain/`: calculations, templates, breakpoints, txt export/import, JSON (de)serialization. React components only render and dispatch.
-- The **export format is the contract**. Any change to `toPrimeViewTxt()` must keep the golden-file tests green. When a real PrimeView sample file arrives, update the golden files first, then the code.
+- The **export format is the contract**. Any change to `toPrimeViewTxt()` must keep the golden-file tests green. Golden files in `tests/golden/` are real PrimeView dumps (CRLF, trailing spaces; `.gitattributes` keeps them byte-exact). When a new sample arrives, add it as a golden file first, then change the code.
 - Round-trip must hold: `fromJson(toJson(m))` deep-equals `m`. `fromTxt(toTxt(m))` must reproduce volumes, %B, flow, fraction, inlet and autozero at every breakpoint. Names and types may differ.
 - Volumes and %B are in **ml** and **%**. Store phase length with its unit (`CV`|`ml`) and only convert for display, calculation and export.
 - Validate before export:
@@ -51,7 +51,7 @@ Vite + React 19 (latest stable) + TypeScript (strict). Node 24 LTS (`.nvmrc`). P
 - ÄKTA prime and prime plus are treated as identical; no separate system variant.
 - Seed column library comes from `docs/data/columns-source.de.csv`; values are unverified until checked against datasheets. Unknown max flow is `null`, never a guess.
 - Applications: IMAC, affinity, IEX, HIC, SEC (incl. desalting), column equilibration. The affinity and HIC templates are proposals pending review.
-- PrimeView txt export/import (`primeview.ts`, golden files) is on hold until the owner provides a real PrimeView sample file. Don't implement it from the preliminary layout in SPEC.md.
+- PrimeView export is the ÄKTA prime method dump format (see SPEC.md). Breakpoints are compact (one per phase start, end only on %B steps, final end).
 - License: MIT.
 
 ## Commands

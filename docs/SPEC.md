@@ -88,7 +88,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
 - Toggle buttons: active = ink fill with white text, inactive = white with ink text.
 
 ### Step 4 — Export for PrimeView
-- Description: "Tab-separated breakpoint table…". Button: "Download {name}.txt".
+- Description: "ÄKTA prime method dump with the breakpoint table, ready to load with PrimeView.". Button: "Download {name}.txt". The preview shows the exact file.
 - Grid `1.3fr 1fr`: the breakpoint table (sticky header; columns BP, Volume ml, %B, Flow, Fraction, Inlet A, Autozero, with a 6 px phase-color dot per row) and a raw text preview (`#1f1f1e` background, `#e8e8e5` text, monospace 12 px / 1.6).
 
 ### Methods popover (from the top bar)
@@ -112,7 +112,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
 ## Calculations
 - Phase ml = length × column CV (unit CV) or length (unit ml).
 - Phase start volume = sum of previous phase volumes. Phase time = ml / flow. Total time = Σ.
-- Breakpoints: **2 per phase**, start (v0, b0, Autozero = phase setting) and end (v1, b1, Autozero = No). Each breakpoint carries the phase's flow, fraction size and inlet.
+- Breakpoints follow ÄKTA prime semantics: a breakpoint sets flow, fraction size and inlet from its volume on; %B is interpolated linearly to the next breakpoint; the method ends at the last breakpoint. So: **one breakpoint per phase start** (v0, b0, Autozero = phase setting), an **end breakpoint** (v1, b1, Autozero = No) only where %B steps to the next phase (same volume as the next start), and a **final end breakpoint**. Each breakpoint carries its phase's flow, fraction size and inlet.
 
 ## Data model
 ```ts
@@ -135,23 +135,18 @@ interface Column { id:string; name:string; manufacturer:string; cv:number;
 ```
 On import, the column is matched by id, then by name. If neither matches and CV is given, the column is created as a custom column.
 
-**TXT export** (preliminary, will be aligned to a real PrimeView sample file). Tab-separated, CRLF line endings:
-```
-Method	<name>
-System	AKTAprime
-Column	<name>	CV <cv> ml	Max flow <max> ml/min   ("Max flow n/a" when unknown)
-Total volume	<total> ml
+**TXT export**: ÄKTA prime "Method Dump" (AKTAprime V2.02, dump format V1.00). Reference file: `tests/golden/sample-imac-gradient.txt` (byte-exact golden test). Code: `src/domain/primeview.ts`.
+- CRLF line endings, spaces only (no tabs). Trailing spaces in the header lines are part of the format.
+- Fixed header block, then *Method Settings*: `Method Type ,-`, `Method ,-`, `Method base ,ml`, `Frac base ,ml`, `Max pressure (kPa) ,{column limit in kPa, capped at 1000}`, `Alarm (min/ml) ,0.0` (keys padded to 19 characters).
+- *Method Breakpoints* table, columns `Brkp Volume Conc Flow Frac Buff Inj Peak Autozero Eventmark`, second header line `(mAu/min)` under Peak. Every field starts with a comma and is padded with spaces; field widths incl. comma: 5, 9, 5, 6, 7, 5, 7, 7, 9, then Eventmark unpadded.
+- Values: Volume, Flow, Frac with one decimal; Conc as a whole number; Buff = inlet A position 1–8; Inj always `Load`; Peak `0`; Autozero `Y`/`N`; Eventmark `N`.
+- Values are rounded on export (%B to whole numbers, flow and fraction size to 0.1); the phase form warns when a value would be rounded.
 
-Breakpoint	Volume	Conc %B	Flow	Fraction	InletA	Autozero
-	(ml)	(%)	(ml/min)	(ml)
-1	0.0	0.0	5.0	0.0	A1	Yes
-```
-**TXT import**:
-- Find the header row starting with "Breakpoint". Map columns by name (vol, conc/%b, flow, frac, inlet, auto).
-- Each consecutive pair of breakpoints with Δvolume > 0 becomes one phase.
-- Phase type is guessed: inlet 8 → sample; %B changes → elution; %B ≥ 99 → strip; first phase → equil; otherwise wash.
-- If the Column meta line contains "CV x", lengths are converted to CV (except for sample phases).
-- Phase names are not in the txt, so the type name is used.
+**TXT import** (Methods popover accepts `.json` and `.txt`):
+- Only `Method base ml`. Find the header row starting with `Brkp`, map columns by name, read rows that start with a comma. Volumes must not decrease.
+- Each consecutive pair of breakpoints with Δvolume > 0 becomes one phase (length in ml, %B from the pair, settings from the first). Zero-length pairs (a %B step) are skipped.
+- Phase type is guessed: inlet 8 or Inj = Inject → sample; %B changes → elution; %B ≥ 99 → strip; first phase → equil; otherwise wash. Phase names are not in the file, so the type name is used.
+- The program replaces the current one; application and column stay, the method name becomes the file name. Inject positions, peak settings and event marks are dropped with a visible message.
 
 ## Application templates
 Lengths depend on the column (`rec` = recommended flow). Code: `src/domain/templates.ts`. Every phase uses `rec` unless stated; elution fractions are 2 ml (1 ml for columns below 5 ml); `grad` is true when start %B ≠ end %B. After loading, the first elution phase is selected (otherwise the first phase). Default method name: `{short}_{column name without non-alphanumerics}`, e.g. `IMAC_HisTrapHP5ml`.

@@ -170,8 +170,8 @@ export function ProgramStep({ state, dispatch }: { state: State; dispatch: (a: A
 
           {issues.length > 0 && (
             <div id={id('issues')} role="status">
-              {issues.map((i) => (
-                <div key={i.field} className="warning">
+              {issues.map((i, k) => (
+                <div key={k} className="warning">
                   {i.message}
                 </div>
               ))}

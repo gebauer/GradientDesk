@@ -34,17 +34,17 @@ describe('breakpoints', () => {
   const phases = [phase({ az: true }), phase({ b0: 0, b1: 100, grad: true, frac: 2, inlet: 3, az: true })]
   const bps = breakpoints(phases, column)
 
-  test('two per phase', () => {
-    expect(bps).toHaveLength(4)
+  test('one per phase start plus the end; continuous %B needs no extra end breakpoint', () => {
+    expect(bps).toHaveLength(3)
   })
 
   test('start carries the phase autozero, end never does', () => {
-    expect(bps.map((b) => b.az)).toEqual([true, false, true, false])
+    expect(bps.map((b) => b.az)).toEqual([true, true, false])
   })
 
   test('volumes, %B and phase settings', () => {
-    expect(bps.map((b) => [b.volume, b.conc])).toEqual([[0, 0], [10, 0], [10, 0], [20, 100]])
-    expect(bps[3]).toMatchObject({ flow: 5, frac: 2, inlet: 3, phase: 1 })
+    expect(bps.map((b) => [b.volume, b.conc])).toEqual([[0, 0], [10, 0], [20, 100]])
+    expect(bps[2]).toMatchObject({ flow: 5, frac: 2, inlet: 3, phase: 1 })
   })
 
   test('isocratic phases ignore a stale end %B', () => {

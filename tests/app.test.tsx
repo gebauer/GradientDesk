@@ -27,7 +27,7 @@ test('walks through the wizard', async () => {
 
   await user.click(screen.getByRole('button', { name: 'Review export' }))
   const rows = within(screen.getByRole('table', { name: 'Breakpoints' })).getAllByRole('row')
-  expect(rows).toHaveLength(1 + 6)
+  expect(rows).toHaveLength(1 + 4)
 })
 
 test('flow above the column max shows the warning', async () => {

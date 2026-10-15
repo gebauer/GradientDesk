@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { fromJson, MethodImportError, toJson } from '../domain/methodJson'
+import { fromPrimeViewTxt } from '../domain/primeview'
 import { APPLICATIONS } from '../domain/templates'
 import { currentMethod, type Action, type State } from '../state/store'
 import { downloadText } from './download'
@@ -27,8 +28,14 @@ export function MethodsPopover({ state, dispatch, onClose }: { state: State; dis
     input.value = ''
     if (!file) return
     try {
-      const method = fromJson(await file.text())
-      dispatch({ type: 'openMethod', method, message: `Imported ${file.name}` })
+      const text = await file.text()
+      if (/\.json$/i.test(file.name) || text.trimStart().startsWith('{')) {
+        dispatch({ type: 'openMethod', method: fromJson(text), message: `Imported ${file.name}` })
+      } else {
+        const { phases, warnings } = fromPrimeViewTxt(text)
+        const text2 = [`Imported ${file.name}`, ...warnings].join(' ')
+        dispatch({ type: 'importPhases', phases, name: file.name.replace(/\.[^.]+$/, ''), status: { text: text2, sticky: warnings.length > 0 } })
+      }
     } catch (err) {
       const reason = err instanceof MethodImportError ? err.message : 'The file could not be read.'
       dispatch({ type: 'setStatus', status: { text: `Could not import ${file.name}: ${reason}`, sticky: true } })
@@ -72,8 +79,8 @@ export function MethodsPopover({ state, dispatch, onClose }: { state: State; dis
       </div>
       <div className="popover-foot">
         <label className="btn file-btn">
-          Import .json
-          <input type="file" accept=".json,application/json" className="visually-hidden" onChange={(e) => void importFile(e.currentTarget)} />
+          Import .json / .txt
+          <input type="file" accept=".json,.txt,application/json,text/plain" className="visually-hidden" onChange={(e) => void importFile(e.currentTarget)} />
         </label>
         <span className="spacer" />
         <button type="button" className="btn" onClick={exportJson}>

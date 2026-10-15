@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import type { Action, State } from '../state/store'
 import { MethodsPopover } from './MethodsPopover'
-import { TXT_EXPORT_AVAILABLE, TXT_PENDING } from './steps/ExportStep'
+import { downloadTxt } from './exportTxt'
 
 export function TopBar({ state, dispatch }: { state: State; dispatch: (a: Action) => void }) {
   const close = useCallback(() => dispatch({ type: 'closeMethods' }), [dispatch])
@@ -33,7 +33,7 @@ export function TopBar({ state, dispatch }: { state: State; dispatch: (a: Action
         </button>
         {state.showMethods && <MethodsPopover state={state} dispatch={dispatch} onClose={close} />}
       </div>
-      <button type="button" className="btn btn-primary" disabled={!TXT_EXPORT_AVAILABLE} title={TXT_PENDING}>
+      <button type="button" className="btn btn-primary" onClick={() => downloadTxt(state)}>
         Export .txt
       </button>
     </header>

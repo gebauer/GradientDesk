@@ -50,16 +50,21 @@ export function calcProgram(phases: readonly Phase[], column: Column): ProgramCa
   return { phases: out, total: v, time }
 }
 
-/** Two breakpoints per phase: start (autozero = phase setting) and end (autozero off). */
+/**
+ * ÄKTA prime breakpoints: each one sets flow, fractions and inlet from its volume on; %B is
+ * interpolated linearly to the next breakpoint, and the method ends at the last one.
+ * So: one breakpoint per phase start (autozero = phase setting), an end breakpoint only where
+ * %B steps to the next phase (same volume as the next start), and a final end breakpoint.
+ */
 export function breakpoints(phases: readonly Phase[], column: Column): Breakpoint[] {
   const calc = calcProgram(phases, column)
   return phases.flatMap((p, i) => {
     const c = calc.phases[i]
     const base = { flow: p.flow, frac: p.frac, inlet: p.inlet, phase: i }
-    return [
-      { ...base, volume: c.v0, conc: c.b0, az: p.az },
-      { ...base, volume: c.v1, conc: c.b1, az: false },
-    ]
+    const start: Breakpoint = { ...base, volume: c.v0, conc: c.b0, az: p.az }
+    const next = calc.phases[i + 1]
+    if (next && next.b0 === c.b1) return [start]
+    return [start, { ...base, volume: c.v1, conc: c.b1, az: false }]
   })
 }
 

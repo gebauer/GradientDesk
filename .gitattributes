@@ -1,0 +1,2 @@
+# PrimeView method dumps are CRLF with significant trailing spaces; keep them byte-exact.
+tests/golden/*.txt -text

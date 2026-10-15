@@ -46,6 +46,7 @@ export type Action =
   | { type: 'save'; now: string }
   | { type: 'deleteMethod'; index: number }
   | { type: 'openMethod'; method: Method; message: string }
+  | { type: 'importPhases'; phases: Phase[]; name: string; status: Status }
   | { type: 'toggleMethods' }
   | { type: 'closeMethods' }
   | { type: 'setStatus'; status: Status | null }
@@ -150,6 +151,8 @@ export function reducer(s: State, a: Action): State {
         status: { text: a.message, sticky: false },
       }
     }
+    case 'importPhases':
+      return { ...s, phases: a.phases, sel: 0, methodName: a.name, step: 3, showMethods: false, status: a.status }
     case 'toggleMethods':
       return { ...s, showMethods: !s.showMethods }
     case 'closeMethods':
