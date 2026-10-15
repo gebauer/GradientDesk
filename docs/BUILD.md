@@ -1,0 +1,112 @@
+# BUILD.md – GradientDesk
+
+## Setup
+```bash
+# run in the repo root (docs/ and CLAUDE.md already exist; keep them)
+npm create vite@latest . -- --template react-ts
+npm i
+npm i -D vitest @testing-library/react @testing-library/user-event jsdom eslint
+```
+Node 24 LTS (pinned in `.nvmrc`; use `nvm use`). The output is a fully static site (`dist/`), deployed via Docker/nginx on Coolify (see below).
+
+## Project structure
+```
+src/
+  domain/
+    types.ts          Phase, Column, Method, Breakpoint
+    columns.ts        seed column library
+    templates.ts      application templates (imac, iex, sec, equil)
+    calc.ts           phaseVolumes(), totals(), breakpoints()
+    primeview.ts      toPrimeViewTxt(), fromPrimeViewTxt()
+    methodJson.ts     toJson(), fromJson() + version migration
+    validate.ts       per-phase warnings and errors
+  storage/
+    local.ts          load/save for gd.customColumns, gd.methods, gd.current
+  state/
+    store.ts          useReducer store + actions (selectPhase, updatePhase, dragHandle, addPhase, …)
+  ui/
+    AppShell.tsx      top bar + left rail + main area
+    TopBar.tsx        method name, Save, Methods popover, Export
+    MethodsPopover.tsx
+    StepRail.tsx      4 steps + stats
+    steps/
+      ApplicationStep.tsx
+      ColumnStep.tsx  table + custom column form
+      ProgramStep.tsx chart + phase list + phase form
+      ExportStep.tsx  breakpoint table + txt preview
+    chart/
+      GradientChart.tsx   SVG: bands, %B line, flow line, fractions, handles
+      useHandleDrag.ts    pointer events, frozen x-domain during a drag
+    form/             Field, NumberInput, Toggle, Segmented, Select
+  styles/tokens.css   CSS variables from SPEC.md "Design Tokens"
+tests/
+  golden/             *.json method → *.txt expected output
+  primeview.test.ts
+  methodJson.test.ts
+  calc.test.ts
+```
+
+## Milestones
+1. **Domain**: types, columns, templates, calc, breakpoints. Unit tests for volumes, CV↔ml, time, and breakpoint count (2 per phase).
+2. **Export/Import**: `toPrimeViewTxt` (tab-separated, CRLF) and `fromPrimeViewTxt`, plus golden tests for all 4 templates. JSON round-trip tests.
+3. **Shell + steps 1, 2, 4**: static layout per SPEC.md, wired to the store.
+4. **Step 3**: phase list and form, then the SVG chart, then handle dragging (pointer events, touch) and keyboard control.
+5. **Persistence**: autosave of the current method, library popover, custom columns, file import (JSON/TXT) with error messages.
+6. **Polish**: hover/focus states, validation warnings, a11y pass, test on Chrome/Edge/Firefox at 1280–1920 px.
+7. **Format alignment**: replace the preliminary txt layout with the real PrimeView format once a sample file is available. Update the golden files first.
+
+## Acceptance checks
+- Choosing each application and column produces the template described in SPEC.md with correct ml values.
+- Dragging a handle updates the length/%B in the form and the breakpoint table live, and the axis does not jump during the drag.
+- Flow above the column max shows the red border and warning text.
+- Save → reload → Methods → Open restores the identical method.
+- Export .json → Import gives an identical method. Export .txt → Import gives identical breakpoints.
+- Custom columns survive reload and can be deleted.
+- `npm test` and `npm run lint` are clean. `npm run build` produces a working static site.
+
+## Repository (GitHub, public)
+- Repo: `gradientdesk`, default branch `main`, protected (PR + green CI required).
+- Add `LICENSE` (MIT), `README.md` (what, screenshot, quick start, disclaimer), `CONTRIBUTING.md`, issue templates (bug, column request, format issue).
+- Disclaimer in README and app footer: "Not affiliated with or endorsed by Cytiva. Product names are trademarks of their respective owners." The footer is a single 12 px muted line under the main area, together with the app version.
+- No secrets, no telemetry, no external requests at runtime.
+- `.github/workflows/ci.yml`: on push/PR → `npm ci`, `npm run lint`, `npm test`, `npm run build`.
+- Tag releases `vX.Y.Z`; show the version (from `package.json` via Vite `define`) in the app.
+
+## Hosting (Coolify)
+Static build served by nginx in a Docker image. In Coolify: New Resource → Public/GitHub repository → Build pack **Dockerfile** → port 80 → domain + auto HTTPS → enable auto-deploy on push to `main`.
+
+`Dockerfile`
+```dockerfile
+FROM node:24-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM nginx:1.27-alpine
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
+HEALTHCHECK CMD wget -qO- http://localhost/ >/dev/null || exit 1
+```
+
+`nginx.conf`
+```nginx
+server {
+  listen 80;
+  root /usr/share/nginx/html;
+  location / { try_files $uri /index.html; }
+  location /assets/ { add_header Cache-Control "public, max-age=31536000, immutable"; }
+  location = /index.html { add_header Cache-Control "no-cache"; }
+  add_header X-Content-Type-Options nosniff;
+  add_header Referrer-Policy no-referrer;
+  add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:";
+}
+```
+Note: data lives in each user's browser (`localStorage`), so redeploys never touch user data. Keep the domain stable — a new origin means empty storage.
+
+## Open points
+- Exact PrimeView txt format (column order, units, header lines, decimal separator). Waiting for a sample file (later).
+- Seed column specs are placeholders; verify against datasheets later. The data structure is final.
+- Resolved: ÄKTA prime and prime plus do not differ.

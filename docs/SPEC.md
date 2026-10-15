@@ -1,0 +1,200 @@
+# Handoff: GradientDesk (ÄKTA prime)
+
+## Overview
+A browser app for planning typical chromatography runs on an ÄKTA prime / prime plus. The user picks an application (IMAC, IEX, SEC, column equilibration), then a column (library or custom). The app loads a template program, which the user edits either graphically (drag handles in a %B-over-volume chart) or phase by phase in a form. The result is exported as a PrimeView-compatible breakpoint table (`.txt`). Methods are stored in the browser and can be exchanged as JSON. Existing JSON or `.txt` files can be imported and edited.
+
+UI language: **English**. Users: mixed lab staff, teaching and practical courses.
+
+## About the Design Files
+`prototype/GradientDesk.dc.html` is a **design reference built in HTML**: a working prototype that shows the intended look and behavior. It is not production code. Recreate it in a proper app (recommended stack in `BUILD.md`). The prototype logic (templates, calculations, export, import) lives in the `<script data-dc-script>` class at the bottom of the file and can be used as a functional reference. Open the file in a browser next to `support.js` to try it.
+
+The file contains two layouts: **1a "Guided wizard"** (chosen, implement this one) and 1b "Chart workspace" (rejected, ignore it).
+
+## Fidelity
+**High fidelity** for layout, colors, typography and interactions of layout 1a. The design frame is 1440 × 900 px. The production app should fill the viewport (min width ~1280 px) and keep the same proportions.
+
+---
+
+## Screens / Views (Layout 1a)
+
+### App shell
+- **Top bar**: height 52 px, background `#fff`, bottom border 1 px `#dcdcd8`, padding 0 20 px, flex row, gap 16 px, items centered.
+  - Logo mark: 12 × 12 px square `#1d1d1c`, radius 2 px, plus the label "GradientDesk" (14 px / 600).
+  - Vertical divider: 1 × 22 px `#dcdcd8`.
+  - Method name: an inline-editable input, 280 × 30 px, background `#f5f5f4`, transparent border, radius 4 px, 13 px.
+  - Spacer (flex 1).
+  - Status message (12 px `#55554f`), shown for 2.5 s after save, open or import. Import errors stay visible.
+  - **Save** button (secondary).
+  - **Methods (n) ▾** button (secondary), which opens the Methods popover.
+  - **Export .txt** button (primary).
+- **Body**: flex row.
+  - **Left rail**: 248 px wide, `#fff`, right border `#dcdcd8`, padding 20 px 14 px. Contains the four wizard steps and a stats block at the bottom.
+  - **Main area**: flex 1, padding 24 px 28 px, column, gap 16 px.
+- **Footer**: one line at the bottom of the main area, 12 px `#6b6b68`: "GradientDesk v{version} · Not affiliated with or endorsed by Cytiva. Product names are trademarks of their respective owners."
+
+### Wizard step item (left rail)
+- Button, padding 10 px, radius 5 px, gap 12 px. Active background `#f0f0ee`, otherwise transparent.
+- Number circle: 24 px. Active or done: fill `#1d1d1c` with white text. Upcoming: white fill.
+- Title 14 px / 600. Subtitle 12 px `#6b6b68`, ellipsis, max 160 px. The subtitle shows the current choice (application name, column name, "6 phases", "12 breakpoints").
+- All steps can be clicked at any time; the order is not enforced.
+- **Stats block**: top border `#e4e4e1`, 2-column grid, 12 px. Rows: Total volume, Run time (h/min), Breakpoints, Buffer B max. Values are right-aligned with tabular numbers.
+
+### Step header (every step)
+A row with space-between, align end. Left: title 20 px / 600, below it a description 14 px `#6b6b68`. Right: Back (secondary) and Continue / Review export / Download (primary), all 34 px high.
+
+### Step 1 — Choose an application
+- Description: "Loads a starting program with typical phases. Everything can be changed later."
+- 2-column grid of cards, gap 14 px. Card: `#fff`, padding 20 px, radius 6 px, border 1 px `#dcdcd8` (selected: 1.5 px `#1d1d1c`).
+  - Name 16 px / 600, right: "N columns" 12 px muted.
+  - Description 13 px `#55554f`, line-height 1.45.
+  - Phase preview: a row of 6 px bars in the phase color with labels (11 px) underneath.
+- Clicking a card loads that application's template (this replaces the current program).
+
+### Step 2 — Select a column
+- Table card (`#fff`, border, radius 6). Grid columns: `40px 1fr 120px 140px 160px 90px` → radio, Column, CV (ml), Max flow (ml/min), Pressure limit (MPa), tag.
+  - Header: 11 px uppercase, letter-spacing .05em, `#6b6b68`.
+  - Row: 14 px, padding 12 × 16, bottom border `#eeeeeb`, selected background `#f3f3f1`. The radio is a 14 px ring with an 8 px dot.
+  - Custom columns show the "Custom" tag and an × button to remove them.
+  - Only columns for the current application are listed. "Column equilibration" lists all columns. Custom columns appear for every application.
+- Card "Add custom column", right label "Saved in this browser only". Grid `2fr 1fr 1fr 1fr auto`: Name, CV (ml), Max flow, Pressure (MPa), button "Add to library" (outline). Name, CV and flow are required. The new column is selected immediately.
+- Changing the column clamps each phase's flow to the column's maximum flow.
+
+### Step 3 — Program (main screen)
+- Description: "{App} on {Column} · drag a handle to change phase length and %B".
+- **Chart card** (`#fff`, border, radius 6, padding 12 16 8). Legend: Conc %B (2 px solid line), Flow (dashed), Fractions (ticks). The SVG is 1104 × 240.
+  - Padding: left 36, right 8, top 24, bottom 26.
+  - X axis: volume in ml, auto tick step from {0.5,1,2,5,10,20,25,50,100,200,500} so there are ≤ 12 ticks. The "ml" unit label sits at the right.
+  - Y axis: 0/25/50/75/100 %, gridlines in black at 8 % opacity.
+  - Phase bands: full-height rect filled with the phase color at alpha .12 (selected: .30), a 4 px color bar above the plot, and the label at top-left. The label shows the full name if the band is > 90 px wide, otherwise the number if > 22 px. Clicking a band selects the phase.
+  - %B line: polyline, 2 px `#1d1d1c`.
+  - Flow line: dashed `4 3`, 1.5 px `#8a8a86`, on its own scale (max = max(column max, phase flows) × 1.15).
+  - Column max flow: dotted red line `oklch(0.6 0.15 25)` with the label "column max X ml/min".
+  - Fraction ticks: 6 px vertical marks under the plot, one per fraction volume.
+  - **Handles**: one at the end of each phase (v1, %B end). Visible circle r=5, white (selected: phase color), 1.5 px ink stroke. Invisible hit area r=12, cursor move.
+- Below the chart: a 2-column grid `340px 1fr`, gap 16.
+  - **Phases list**: header "Phases" with "n · total ml". Each row is a grid `22px 10px 1fr auto`: number, color square, name, meta ("5 CV · 5→100 %B"). The selected row has background `#f3f3f1` and an inset 3 px left ink bar. Footer button "+ Add phase after selected".
+  - **Phase form**: header with color square, name 16 px / 600, "Phase i of n", and right "X ml · Y CV · Z min". Then a 4-column grid of fields (label 11 px uppercase muted, input 32 px high, border `#d0d0cc`, radius 4):
+    - Name (span 2)
+    - Phase type (span 2): Equilibration, Sample application, Wash, Elution, Strip / CIP
+    - Length, with a CV | ml segmented toggle. Switching the unit converts the value.
+    - Start %B
+    - End %B (disabled when isocratic)
+    - Gradient toggle: "Linear gradient" / "Isocratic"
+    - Flow (ml/min). The border turns red when above the column max, and the warning "Above the column maximum of X ml/min." appears.
+    - Fraction size (ml), where 0 means no fractions
+    - Inlet A (A1–A8, A8 labelled "(sample)")
+    - Autozero at start (On/Off toggle)
+  - Footer: "Delete phase" (muted outline), spacer, "← Previous phase", "Next phase →" (primary).
+- Toggle buttons: active = ink fill with white text, inactive = white with ink text.
+
+### Step 4 — Export for PrimeView
+- Description: "Tab-separated breakpoint table…". Button: "Download {name}.txt".
+- Grid `1.3fr 1fr`: the breakpoint table (sticky header; columns BP, Volume ml, %B, Flow, Fraction, Inlet A, Autozero, with a 6 px phase-color dot per row) and a raw text preview (`#1f1f1e` background, `#e8e8e5` text, monospace 12 px / 1.6).
+
+### Methods popover (from the top bar)
+- Anchored right under the button, 440 px wide, `#fff`, border `#cfcfcb`, radius 6, shadow `0 10px 28px rgba(0,0,0,.14)`.
+- Header: "Saved methods", right "Stored in this browser".
+- List (max-height 320, scroll). Each row shows the name (13/600), meta "IMAC · HisTrap HP 5 ml · 6 phases · date", an **Open** button (outline) and × to delete. Empty state: "No saved methods yet. Use Save, or import a file."
+- Footer (`#fafaf9`): "Import .json / .txt" (file picker) on the left, "Export .json" on the right.
+
+---
+
+## Interactions & Behavior
+- **Drag a handle**: x changes the phase length (stored in the phase's unit, rounded to 0.1). y changes %B (0–100, integer). For a gradient phase, y changes End %B; for an isocratic phase, it changes both Start and End. While dragging, the x domain is frozen to the total at drag start so the axis doesn't rescale under the cursor. Drag starts on mousedown, then window mousemove/mouseup listeners take over. Add pointer/touch support in production.
+- **Phase selection** is shared between the chart band, the list row and Previous/Next.
+- **Add phase**: inserts "New phase" (wash, 5 CV, %B = end %B of the selected phase, same flow and inlet) after the selected phase and selects it.
+- **Delete**: only allowed when more than one phase exists.
+- **Save**: upserts by method name into the library.
+- **Open / Import**: replaces the current program and jumps to step 3.
+- **Autosave**: the current working method is written to storage on every change (not while dragging) and restored on load.
+- No animations. Hover states are not designed. Add a subtle background darken (about 4 %) on buttons and rows.
+
+## Calculations
+- Phase ml = length × column CV (unit CV) or length (unit ml).
+- Phase start volume = sum of previous phase volumes. Phase time = ml / flow. Total time = Σ.
+- Breakpoints: **2 per phase**, start (v0, b0, Autozero = phase setting) and end (v1, b1, Autozero = No). Each breakpoint carries the phase's flow, fraction size and inlet.
+
+## Data model
+```ts
+type PhaseType = 'equil'|'sample'|'wash'|'elution'|'strip';
+interface Phase { name:string; type:PhaseType; len:number; unit:'CV'|'ml';
+  b0:number; b1:number; grad:boolean; flow:number; frac:number; inlet:1..8; az:boolean }
+interface Column { id:string; name:string; cv:number; flow:number /*max*/; rec:number /*default flow*/;
+  p:number /*MPa*/; apps:string[]; custom?:boolean }
+```
+**Method JSON** (export/import, version 1):
+```json
+{ "format":"gradientdesk", "version":1, "name":"IMAC_HisTrap5_gradient",
+  "application":"imac", "system":"AKTAprime",
+  "column":{"id":"histrap5","name":"HisTrap HP 5 ml","cv":5,"flow":20,"rec":5,"p":0.5,"custom":false},
+  "phases":[{"name":"Equilibration","type":"equil","length":5,"unit":"CV","startB":0,"endB":0,
+    "gradient":false,"flow":5,"fraction":0,"inletA":1,"autozero":true}],
+  "modified":"2026-10-15T10:00:00.000Z" }
+```
+On import, the column is matched by id, then by name. If neither matches and CV is given, the column is created as a custom column.
+
+**TXT export** (preliminary, will be aligned to a real PrimeView sample file). Tab-separated, CRLF line endings:
+```
+Method	<name>
+System	AKTAprime
+Column	<name>	CV <cv> ml	Max flow <max> ml/min
+Total volume	<total> ml
+
+Breakpoint	Volume	Conc %B	Flow	Fraction	InletA	Autozero
+	(ml)	(%)	(ml/min)	(ml)
+1	0.0	0.0	5.0	0.0	A1	Yes
+```
+**TXT import**:
+- Find the header row starting with "Breakpoint". Map columns by name (vol, conc/%b, flow, frac, inlet, auto).
+- Each consecutive pair of breakpoints with Δvolume > 0 becomes one phase.
+- Phase type is guessed: inlet 8 → sample; %B changes → elution; %B ≥ 99 → strip; first phase → equil; otherwise wash.
+- If the Column meta line contains "CV x", lengths are converted to CV (except for sample phases).
+- Phase names are not in the txt, so the type name is used.
+
+## Application templates
+Lengths depend on the column (`rec` = recommended flow).
+- **IMAC**: Equilibration 5 CV 0 %B (AZ on) → Sample load 25 ml, A8, flow 1 (5 ml column) or 0.5 → Wash 10 CV 5 %B → Elution 20 CV 5→100 %B, fractions 2 ml (1 ml for small columns), AZ on → Strip 5 CV 100 % → Re-equilibration 5 CV 0 %.
+- **IEX**: Equilibration 5 CV (AZ) → Sample load 20 ml, A8, flow max(0.5, rec/5) → Wash 5 CV → Elution 20 CV 0→50 %B, fractions → High-salt strip 5 CV 100 % → Re-equilibration 5 CV.
+- **SEC**: Equilibration 1 CV (AZ) → Sample injection 2 ml → Isocratic elution 1.2 CV, fractions 2 ml, AZ.
+- **Column equilibration**: Water rinse 3 CV, inlet A2 (AZ) → Equilibration 5 CV (AZ).
+
+## Column library (seed)
+| id | name | CV ml | max flow | rec flow | MPa | apps |
+|---|---|---|---|---|---|---|
+| histrap1 | HisTrap HP 1 ml | 1 | 4 | 1 | 0.5 | imac |
+| histrap5 | HisTrap HP 5 ml | 5 | 20 | 5 | 0.5 | imac |
+| qhp5 | HiTrap Q HP 5 ml | 5 | 20 | 5 | 0.5 | iex |
+| sphp5 | HiTrap SP HP 5 ml | 5 | 20 | 5 | 0.5 | iex |
+| s200 | HiLoad 16/600 Superdex 200 pg | 120 | 1.6 | 1 | 0.5 | sec |
+| s75 | HiLoad 16/600 Superdex 75 pg | 120 | 1.6 | 1 | 0.5 | sec |
+| desalt | HiPrep 26/10 Desalting | 53 | 15 | 10 | 0.15 | sec |
+
+These values are placeholders (structure is final); verify them against the vendor datasheets later. A custom column gets rec flow = 50 % of its max flow.
+
+## State Management
+- `app`, `colId`, `phases[]`, `sel` (selected phase index), `step` (1–4), `methodName`
+- `customColumns[]`, `library[]` (saved methods), `showMethods`, `statusMsg`, `importError`
+- `dragDomain` (frozen x max during a drag)
+- Persistence in `localStorage`: `gd.customColumns`, `gd.methods`, `gd.current`. There is no backend.
+
+## Design Tokens
+- **Ink** `#1d1d1c` · **Secondary text** `#55554f` · **Muted** `#6b6b68` · **Chart flow line** `#8a8a86`
+- **Canvas** `#f5f5f4` · **Surface** `#ffffff` · **Footer surface** `#fafaf9` · **Selected row** `#f3f3f1` · **Active step** `#f0f0ee`
+- **Borders**: frame `#dcdcd8`, input `#d0d0cc`, button `#cfcfcb`, inner divider `#e4e4e1`, row `#eeeeeb` / `#f0f0ed`
+- **Code block**: background `#1f1f1e`, text `#e8e8e5`
+- **Warning**: line/border `oklch(0.6 0.15 25)`, text `oklch(0.48 0.15 25)`
+- **Phase colors**: `oklch(0.72 0.12 H)` with H = equil 240, sample 300, wash 190, elution 40, strip 95. Band tint uses alpha .12 (selected .30). List tint uses alpha .14 / .32.
+- **Type**: "Helvetica Neue", Helvetica, "Segoe UI", sans-serif. Sizes 11 (labels, uppercase, +.05em), 12, 13 (inputs/buttons), 14 (body), 16 (card titles), 20 (step titles), all 400/500/600. Numbers use `font-variant-numeric: tabular-nums`. Monospace: ui-monospace, Menlo, Consolas.
+- **Radius**: 2 (swatches), 4 (inputs/buttons), 5 (step items), 6 (cards/popovers)
+- **Heights**: inputs 32, buttons 32–34, top bar 52
+- **Spacing**: 4 / 6 / 8 / 10 / 12 / 14 / 16 / 20 / 24 / 28
+- **Shadow**: only the popover, `0 10px 28px rgba(0,0,0,.14)`
+
+## Assets
+None. There are no images or icon fonts; glyphs (× ‹ › ▾ ← →) are plain text characters.
+
+## Files
+- `docs/prototype/GradientDesk.dc.html` – the prototype (layout 1a is the reference; logic at the bottom of the file)
+- `docs/prototype/support.js` – runtime needed to open the prototype in a browser
+- `CLAUDE.md` (repo root) – project instructions for Claude Code
+- `docs/BUILD.md` – stack, structure, build and test plan
