@@ -1,7 +1,7 @@
 # Handoff: GradientDesk (ÄKTA prime)
 
 ## Overview
-A browser app for planning typical chromatography runs on an ÄKTA prime / prime plus. The user picks an application (IMAC, IEX, SEC, column equilibration), then a column (library or custom). The app loads a template program, which the user edits either graphically (drag handles in a %B-over-volume chart) or phase by phase in a form. The result is exported as a PrimeView-compatible breakpoint table (`.txt`). Methods are stored in the browser and can be exchanged as JSON. Existing JSON or `.txt` files can be imported and edited.
+A browser app for planning typical chromatography runs on an ÄKTA prime / prime plus. The user picks an application (IMAC, affinity, IEX, HIC, SEC / desalting, column equilibration), then a column (library or custom). The app loads a template program, which the user edits either graphically (drag handles in a %B-over-volume chart) or phase by phase in a form. The result is exported as a PrimeView-compatible breakpoint table (`.txt`). Methods are stored in the browser and can be exchanged as JSON. Existing JSON or `.txt` files can be imported and edited.
 
 UI language: **English**. Users: mixed lab staff, teaching and practical courses.
 
@@ -44,20 +44,20 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
 
 ### Step 1 — Choose an application
 - Description: "Loads a starting program with typical phases. Everything can be changed later."
-- 2-column grid of cards, gap 14 px. Card: `#fff`, padding 20 px, radius 6 px, border 1 px `#dcdcd8` (selected: 1.5 px `#1d1d1c`).
+- 2-column grid of cards (six applications, three rows), gap 14 px. Card: `#fff`, padding 20 px, radius 6 px, border 1 px `#dcdcd8` (selected: 1.5 px `#1d1d1c`).
   - Name 16 px / 600, right: "N columns" 12 px muted.
   - Description 13 px `#55554f`, line-height 1.45.
   - Phase preview: a row of 6 px bars in the phase color with labels (11 px) underneath.
 - Clicking a card loads that application's template (this replaces the current program).
 
 ### Step 2 — Select a column
-- Table card (`#fff`, border, radius 6). Grid columns: `40px 1fr 120px 140px 160px 90px` → radio, Column, CV (ml), Max flow (ml/min), Pressure limit (MPa), tag.
+- Table card (`#fff`, border, radius 6). Grid columns: `40px 1fr 120px 140px 160px 90px` → radio, Column (name, manufacturer below in 12 px muted), CV (ml), Max flow (ml/min), Pressure limit (MPa), tag. Max flow shows "–" when the vendor gives no value.
   - Header: 11 px uppercase, letter-spacing .05em, `#6b6b68`.
   - Row: 14 px, padding 12 × 16, bottom border `#eeeeeb`, selected background `#f3f3f1`. The radio is a 14 px ring with an 8 px dot.
   - Custom columns show the "Custom" tag and an × button to remove them.
   - Only columns for the current application are listed. "Column equilibration" lists all columns. Custom columns appear for every application.
 - Card "Add custom column", right label "Saved in this browser only". Grid `2fr 1fr 1fr 1fr auto`: Name, CV (ml), Max flow, Pressure (MPa), button "Add to library" (outline). Name, CV and flow are required. The new column is selected immediately.
-- Changing the column clamps each phase's flow to the column's maximum flow.
+- Changing the column clamps each phase's flow to the column's maximum flow. Columns without a max flow (`flow: null`) don't clamp.
 
 ### Step 3 — Program (main screen)
 - Description: "{App} on {Column} · drag a handle to change phase length and %B".
@@ -68,7 +68,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
   - Phase bands: full-height rect filled with the phase color at alpha .12 (selected: .30), a 4 px color bar above the plot, and the label at top-left. The label shows the full name if the band is > 90 px wide, otherwise the number if > 22 px. Clicking a band selects the phase.
   - %B line: polyline, 2 px `#1d1d1c`.
   - Flow line: dashed `4 3`, 1.5 px `#8a8a86`, on its own scale (max = max(column max, phase flows) × 1.15).
-  - Column max flow: dotted red line `oklch(0.6 0.15 25)` with the label "column max X ml/min".
+  - Column max flow: dotted red line `oklch(0.6 0.15 25)` with the label "column max X ml/min". Not drawn when the column has no max flow.
   - Fraction ticks: 6 px vertical marks under the plot, one per fraction volume.
   - **Handles**: one at the end of each phase (v1, %B end). Visible circle r=5, white (selected: phase color), 1.5 px ink stroke. Invisible hit area r=12, cursor move.
 - Below the chart: a 2-column grid `340px 1fr`, gap 16.
@@ -80,7 +80,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
     - Start %B
     - End %B (disabled when isocratic)
     - Gradient toggle: "Linear gradient" / "Isocratic"
-    - Flow (ml/min). The border turns red when above the column max, and the warning "Above the column maximum of X ml/min." appears.
+    - Flow (ml/min). The border turns red when above the column max, and the warning "Above the column maximum of X ml/min." appears. No check when the column has no max flow.
     - Fraction size (ml), where 0 means no fractions
     - Inlet A (A1–A8, A8 labelled "(sample)")
     - Autozero at start (On/Off toggle)
@@ -119,14 +119,16 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
 type PhaseType = 'equil'|'sample'|'wash'|'elution'|'strip';
 interface Phase { name:string; type:PhaseType; len:number; unit:'CV'|'ml';
   b0:number; b1:number; grad:boolean; flow:number; frac:number; inlet:1..8; az:boolean }
-interface Column { id:string; name:string; cv:number; flow:number /*max*/; rec:number /*default flow*/;
-  p:number /*MPa*/; apps:string[]; custom?:boolean }
+type ApplicationId = 'imac'|'affinity'|'iex'|'hic'|'sec'|'equil';
+interface Column { id:string; name:string; manufacturer:string; cv:number;
+  flow:number|null /*max ml/min; null = vendor gives no value*/; rec:number /*default flow*/;
+  p:number /*MPa, lower of packed bed and hardware limit*/; apps:ApplicationId[]; note?:string; custom?:boolean }
 ```
 **Method JSON** (export/import, version 1):
 ```json
 { "format":"gradientdesk", "version":1, "name":"IMAC_HisTrap5_gradient",
   "application":"imac", "system":"AKTAprime",
-  "column":{"id":"histrap5","name":"HisTrap HP 5 ml","cv":5,"flow":20,"rec":5,"p":0.5,"custom":false},
+  "column":{"id":"histrap-hp-5-ml","name":"HisTrap HP 5 ml","manufacturer":"Cytiva","cv":5,"flow":20,"rec":5,"p":0.5,"apps":["imac"]},
   "phases":[{"name":"Equilibration","type":"equil","length":5,"unit":"CV","startB":0,"endB":0,
     "gradient":false,"flow":5,"fraction":0,"inletA":1,"autozero":true}],
   "modified":"2026-10-15T10:00:00.000Z" }
@@ -137,7 +139,7 @@ On import, the column is matched by id, then by name. If neither matches and CV 
 ```
 Method	<name>
 System	AKTAprime
-Column	<name>	CV <cv> ml	Max flow <max> ml/min
+Column	<name>	CV <cv> ml	Max flow <max> ml/min   ("Max flow n/a" when unknown)
 Total volume	<total> ml
 
 Breakpoint	Volume	Conc %B	Flow	Fraction	InletA	Autozero
@@ -155,21 +157,21 @@ Breakpoint	Volume	Conc %B	Flow	Fraction	InletA	Autozero
 Lengths depend on the column (`rec` = recommended flow).
 - **IMAC**: Equilibration 5 CV 0 %B (AZ on) → Sample load 25 ml, A8, flow 1 (5 ml column) or 0.5 → Wash 10 CV 5 %B → Elution 20 CV 5→100 %B, fractions 2 ml (1 ml for small columns), AZ on → Strip 5 CV 100 % → Re-equilibration 5 CV 0 %.
 - **IEX**: Equilibration 5 CV (AZ) → Sample load 20 ml, A8, flow max(0.5, rec/5) → Wash 5 CV → Elution 20 CV 0→50 %B, fractions → High-salt strip 5 CV 100 % → Re-equilibration 5 CV.
-- **SEC**: Equilibration 1 CV (AZ) → Sample injection 2 ml → Isocratic elution 1.2 CV, fractions 2 ml, AZ.
+- **Affinity** (proposal, step elution; B = elution buffer with glutathione / biotin / maltose / low pH): Equilibration 5 CV 0 %B (AZ) → Sample load 20 ml, A8, flow max(0.5, rec/5) → Wash 10 CV 0 %B → Elution 10 CV 100 %B isocratic, fractions 2 ml (1 ml for columns ≤ 1 ml), AZ → Re-equilibration 5 CV 0 %B.
+- **HIC** (proposal; A = high-salt binding buffer, B = no salt): Equilibration 5 CV 0 %B (AZ) → Sample load 20 ml, A8, flow max(0.5, rec/5) → Wash 5 CV 0 %B → Elution 20 CV 0→100 %B, fractions → Strip 5 CV 100 %B → Re-equilibration 5 CV 0 %B.
+- **SEC** (includes desalting columns): Equilibration 1 CV (AZ) → Sample injection 2 ml → Isocratic elution 1.2 CV, fractions 2 ml, AZ.
 - **Column equilibration**: Water rinse 3 CV, inlet A2 (AZ) → Equilibration 5 CV (AZ).
 
 ## Column library (seed)
-| id | name | CV ml | max flow | rec flow | MPa | apps |
-|---|---|---|---|---|---|---|
-| histrap1 | HisTrap HP 1 ml | 1 | 4 | 1 | 0.5 | imac |
-| histrap5 | HisTrap HP 5 ml | 5 | 20 | 5 | 0.5 | imac |
-| qhp5 | HiTrap Q HP 5 ml | 5 | 20 | 5 | 0.5 | iex |
-| sphp5 | HiTrap SP HP 5 ml | 5 | 20 | 5 | 0.5 | iex |
-| s200 | HiLoad 16/600 Superdex 200 pg | 120 | 1.6 | 1 | 0.5 | sec |
-| s75 | HiLoad 16/600 Superdex 75 pg | 120 | 1.6 | 1 | 0.5 | sec |
-| desalt | HiPrep 26/10 Desalting | 53 | 15 | 10 | 0.15 | sec |
+Source: `docs/data/columns-source.de.csv` (German, as provided). Code: `src/domain/columns.ts`, 101 columns.
+- Each product and each size is its own column ("HiTrap Q FF / SP FF" × "1 / 5 ml" → four columns). The size is part of the name for cartridges sold in several sizes ("HisTrap HP 5 ml"). IDs are the slugged name (`histrap-hp-5-ml`).
+- `p` is the lower of packed-bed and hardware limit. The system limit (ÄKTA prime: 1 MPa) is the constant `SYSTEM_MAX_PRESSURE`.
+- `flow` is `null` where the vendor gives no value ("k. A." in the source).
+- `rec` is a heuristic: 1 CV/min for cartridges ≤ 5 ml (capped at max flow), otherwise 50 % of max flow; without a max flow 1 CV/min capped at 5 ml/min. Explicit override: Superdex 200 Increase 10/300 GL → 0.3 ml/min (1 MPa system limit).
+- Applications: IMAC → `imac`; GST/Strep/MBP/Protein A/G/SUPrA/eXact → `affinity`; Q/S/DEAE/CM, Mono Q/S, UNOsphere, Macro-Prep, CHT → `iex`; Heparin → `affinity` and `iex`; Phenyl/Butyl/Octyl → `hic`; Superdex, ENrich, desalting → `sec`.
+- Vendor notes are kept in `note` (English).
 
-These values are placeholders (structure is final); verify them against the vendor datasheets later. A custom column gets rec flow = 50 % of its max flow.
+Values are unverified; check them against the vendor datasheets later. A custom column gets rec flow = 50 % of its max flow.
 
 ## State Management
 - `app`, `colId`, `phases[]`, `sel` (selected phase index), `step` (1–4), `methodName`
