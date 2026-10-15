@@ -923,9 +923,6 @@ select.input {
   color: var(--warn-text);
 }
 
-.app-card.wide {
-  grid-column: span 2;
-}
 
 .col-search {
   display: flex;

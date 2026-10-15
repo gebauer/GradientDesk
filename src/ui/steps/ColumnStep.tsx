@@ -14,12 +14,14 @@ export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Ac
   const [type, setType] = useState<ColumnType>(() => defaultColumnType(state.app))
   const [vendorPick, setVendor] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  // Recent as it was when the step opened, so a clicked row doesn't jump away under the pointer.
+  const [recentAtOpen] = useState(() => state.recentColumns)
   const vendors = vendorCounts(columnsOfType(all, type))
   // A vendor with no columns of the chosen type falls back to all vendors.
   const vendor = vendors.some((v) => v.vendor === vendorPick) ? vendorPick : null
   const cols = filterColumns(all, { type, vendor, query })
   const filtered = cols.length !== all.length
-  const { recent, rest } = splitRecent(cols, state.recentColumns)
+  const { recent, rest } = splitRecent(cols, recentAtOpen)
   // Tab stop: the selected row, or the first row when the selection is filtered out.
   const tabStop = cols.some((c) => c.id === state.colId) ? state.colId : (recent[0] ?? rest[0])?.id
   const [draft, setDraft] = useState(EMPTY)

@@ -51,7 +51,7 @@ Vite + React 19 (latest stable) + TypeScript (strict). Node 24 LTS (`.nvmrc`). P
 ## Decisions
 - ÄKTA prime and prime plus are treated as identical; no separate system variant.
 - Seed column library comes from `docs/data/columns-source.de.csv`; values are unverified until checked against datasheets. Unknown max flow is `null`, never a guess.
-- Applications: General (default, all columns), IMAC, affinity, IEX, HIC, SEC (incl. desalting), column equilibration. The affinity and HIC templates are proposals pending review.
+- Applications: General (default, all columns), Elute pre-loaded column (all columns, no sample phase), IMAC, affinity, IEX, HIC, SEC (incl. desalting), column equilibration. The affinity and HIC templates are proposals pending review.
 - PrimeView export is the ÄKTA prime method dump format, spec in `docs/primeview-format.md`. Breakpoints: one per phase start, final end; on a %B step the phase ends at its volume and the next start follows at +0.1 ml (same-volume breakpoints don't work on the instrument). Files are `PrimeMeth_NNN.txt` (1–99).
 - The ÄKTA prime has a 4 ml mixer: gradients over less than 10 ml get a warning.
 - License: MIT.

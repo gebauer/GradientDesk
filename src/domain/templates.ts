@@ -10,6 +10,7 @@ export interface Application {
 
 export const APPLICATIONS: readonly Application[] = [
   { id: 'general', name: 'General', short: 'General', description: 'Any column. Equilibration, sample load, wash, linear gradient elution and re-equilibration as a starting point.' },
+  { id: 'preloaded', name: 'Elute pre-loaded column', short: 'Elute', description: 'Any column, loaded off the system. Wash, linear gradient elution, strip and re-equilibration. No sample phase.' },
   { id: 'imac', name: 'Affinity · IMAC', short: 'IMAC', description: 'His-tagged proteins on Ni columns. Imidazole step wash and linear gradient elution.' },
   { id: 'affinity', name: 'Affinity · tags and ligands', short: 'Affinity', description: 'GST, Strep, MBP, Protein A/G and heparin. Step elution with the elution buffer.' },
   { id: 'iex', name: 'Ion exchange', short: 'IEX', description: 'Anion or cation exchange. Salt gradient elution, high-salt strip, re-equilibration.' },
@@ -51,6 +52,12 @@ const TEMPLATES: Record<ApplicationId, (c: Column) => Phase[]> = {
     P('Sample load', 'sample', 10, 'ml', 0, 0, slowLoad(c), 0, 8, false),
     P('Wash', 'wash', 5, 'CV', 0, 0, c.rec, 0, 1, false),
     P('Elution', 'elution', 20, 'CV', 0, 100, c.rec, elutionFrac(c), 1, true),
+    P('Re-equilibration', 'equil', 5, 'CV', 0, 0, c.rec, 0, 1, false),
+  ],
+  preloaded: (c) => [
+    P('Wash', 'wash', 5, 'CV', 0, 0, c.rec, 0, 1, true),
+    P('Elution', 'elution', 20, 'CV', 0, 100, c.rec, elutionFrac(c), 1, true),
+    P('Strip', 'strip', 5, 'CV', 100, 100, c.rec, 0, 1, false),
     P('Re-equilibration', 'equil', 5, 'CV', 0, 0, c.rec, 0, 1, false),
   ],
   imac: (c) => [

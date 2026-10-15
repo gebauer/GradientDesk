@@ -57,6 +57,16 @@ describe('templates (ml per phase)', () => {
     expect(ph.every((p) => p.flow === 0.8 && !p.grad)).toBe(true)
   })
 
+  test('pre-loaded column: no sample phase, wash then gradient', () => {
+    const c = col('HisTrap HP 5 ml')
+    const ph = templateFor('preloaded', c)
+    expect(mls('preloaded', c)).toEqual([25, 100, 25, 25])
+    expect(ph.some((p) => p.type === 'sample' || p.inlet === 8)).toBe(false)
+    expect(ph[0]).toMatchObject({ type: 'wash', az: true })
+    expect(ph[1]).toMatchObject({ type: 'elution', b0: 0, b1: 100, grad: true, frac: 2, az: true })
+    expect(defaultSelection(ph)).toBe(1)
+  })
+
   test('column equilibration rinses with water on A2', () => {
     const c = col('HisTrap HP 5 ml')
     expect(mls('equil', c)).toEqual([15, 25])

@@ -1,7 +1,7 @@
 # Handoff: GradientDesk (ÄKTA prime)
 
 ## Overview
-A browser app for planning typical chromatography runs on an ÄKTA prime / prime plus. The user picks an application (General, IMAC, affinity, IEX, HIC, SEC / desalting, column equilibration), then a column (library or custom). The app loads a template program, which the user edits either graphically (drag handles in a %B-over-volume chart) or phase by phase in a form. The result is exported as a PrimeView-compatible breakpoint table (`.txt`). Methods are stored in the browser and can be exchanged as JSON. Existing JSON or `.txt` files can be imported and edited.
+A browser app for planning typical chromatography runs on an ÄKTA prime / prime plus. The user picks an application (General, Elute pre-loaded column, IMAC, affinity, IEX, HIC, SEC / desalting, column equilibration), then a column (library or custom). The app loads a template program, which the user edits either graphically (drag handles in a %B-over-volume chart) or phase by phase in a form. The result is exported as a PrimeView-compatible breakpoint table (`.txt`). Methods are stored in the browser and can be exchanged as JSON. Existing JSON or `.txt` files can be imported and edited.
 
 UI language: **English**. Users: mixed lab staff, teaching and practical courses.
 
@@ -44,7 +44,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
 
 ### Step 1 — Choose an application
 - Description: "Loads a starting program with typical phases. Everything can be changed later."
-- 2-column grid of cards, gap 14 px. The General card comes first and spans both columns; the other six follow in three rows. A fresh start (nothing stored) loads General. Card: `#fff`, padding 20 px, radius 6 px, border 1 px `#dcdcd8` (selected: 1.5 px `#1d1d1c`).
+- 2-column grid of cards, gap 14 px, four rows: General | Elute pre-loaded column, IMAC | Affinity, Ion exchange | HIC, Size exclusion | Column equilibration. A fresh start (nothing stored) loads General. Card: `#fff`, padding 20 px, radius 6 px, border 1 px `#dcdcd8` (selected: 1.5 px `#1d1d1c`).
   - Name 16 px / 600, right: "N columns" 12 px muted.
   - Description 13 px `#55554f`, line-height 1.45.
   - Phase preview: a row of 6 px bars in the phase color with labels (11 px) underneath.
@@ -56,12 +56,12 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
   - Row: 14 px, padding 12 × 16, bottom border `#eeeeeb`, selected background `#f3f3f1`. The radio is a 14 px ring with an 8 px dot.
   - Custom columns show the "Custom" tag and an × button to remove them.
   - **Filters** above the table, preset from the application but always changeable (picking a column of another type keeps the loaded program):
-  - **Type** select (170 px): All types, IMAC, Affinity, Ion exchange, HIC, SEC / desalting. Preset to the step 1 application; General and Column equilibration preset to All types. Custom columns belong to every type.
+  - **Type** select (170 px): All types, IMAC, Affinity, Ion exchange, HIC, SEC / desalting. Preset to the step 1 application; General, Elute pre-loaded column and Column equilibration preset to All types. Custom columns belong to every type.
   - **Search** input (max 480 px, placeholder "Search by name, manufacturer or size, e.g. superdex 200, 5 ml"). Every word must appear in name, manufacturer or size ("5 ml"), case-insensitive. Escape clears it.
   - Muted count "n of m columns" (m = all columns).
   - **Vendor pills** below: "All vendors" plus one pill per vendor that has columns of the chosen type, with its count, most columns first, "Custom" last. Single select; clicking the active pill returns to All vendors. Pill: 28 px high, radius 14, border `#cfcfcb`, 12 px; active = ink fill, white text.
   - Empty result: "No columns match “…”." or "No columns for this type and vendor."
-- **Recent section**: the filtered list is split into "Recent" (the last 5 columns the user chose, newest first, then all custom columns) and "All columns" (the rest, library order), each under an 11 px uppercase section row on `#fafaf9`. Without recent or custom columns there are no section rows. Choosing a column, adding a custom column and opening a method count as use; loading a template or the automatic fallback after removing a custom column don't. Stored per browser in `gd.recentColumns`.
+- **Recent section**: the filtered list is split into "Recent" (the last 5 columns the user chose, newest first, then all custom columns) and "All columns" (the rest, library order), each under an 11 px uppercase section row on `#fafaf9`. Without recent or custom columns there are no section rows. Choosing a column, adding a custom column and opening a method count as use; loading a template or the automatic fallback after removing a custom column don't. Stored per browser in `gd.recentColumns`. The section is computed when the step opens (custom columns live), so a row the user clicks stays where it is and moves to Recent on the next visit.
 - Card "Add custom column", right label "Saved in this browser only". Grid `2fr 1fr 1fr 1fr auto`: Name, CV (ml), Max flow, Pressure (MPa), button "Add to library" (outline). Name, CV and flow are required. The new column is selected immediately.
 - Changing the column clamps each phase's flow to the column's maximum flow. Columns without a max flow (`flow: null`) don't clamp.
 
@@ -163,6 +163,7 @@ Lengths depend on the column (`rec` = recommended flow). Code: `src/domain/templ
 
 Application cards (name · short · description):
 - General · General · Any column. Equilibration, sample load, wash, linear gradient elution and re-equilibration as a starting point.
+- Elute pre-loaded column · Elute · Any column, loaded off the system. Wash, linear gradient elution, strip and re-equilibration. No sample phase.
 - Affinity · IMAC · IMAC · His-tagged proteins on Ni columns. Imidazole step wash and linear gradient elution.
 - Affinity · tags and ligands · Affinity · GST, Strep, MBP, Protein A/G and heparin. Step elution with the elution buffer.
 - Ion exchange · IEX · Anion or cation exchange. Salt gradient elution, high-salt strip, re-equilibration.
@@ -170,6 +171,7 @@ Application cards (name · short · description):
 - Size exclusion · SEC · Isocratic run on a gel filtration or desalting column with fraction collection over 1.2 CV.
 - Column equilibration · Equilibrate · Water rinse followed by buffer equilibration. No sample, no fractions.
 
+- **Elute pre-loaded column** (all columns; the column was loaded off the system, no sample phase): Wash 5 CV 0 %B (AZ) → Elution 20 CV 0→100 %B, fractions, AZ → Strip 5 CV 100 %B → Re-equilibration 5 CV 0 %B.
 - **General** (all columns): Equilibration 5 CV 0 %B (AZ) → Sample load 10 ml, A8, flow max(0.5, rec/5) → Wash 5 CV 0 %B → Elution 20 CV 0→100 %B, fractions, AZ → Re-equilibration 5 CV 0 %B.
 - **IMAC**: Equilibration 5 CV 0 %B (AZ on) → Sample load 25 ml, A8, flow 1 (5 ml column) or 0.5 → Wash 10 CV 5 %B → Elution 20 CV 5→100 %B, fractions 2 ml (1 ml for small columns), AZ on → Strip 5 CV 100 % → Re-equilibration 5 CV 0 %.
 - **IEX**: Equilibration 5 CV (AZ) → Sample load 20 ml, A8, flow max(0.5, rec/5) → Wash 5 CV → Elution 20 CV 0→50 %B, fractions → High-salt strip 5 CV 100 % → Re-equilibration 5 CV.

@@ -115,6 +115,10 @@ test('recently used columns appear in a Recent section at the top', async () => 
   await user.type(screen.getByRole('searchbox', { name: 'Search columns' }), 'superdex 200 increase')
   await user.click(screen.getByRole('radio', { name: /Superdex 200 Increase/ }))
   await user.clear(screen.getByRole('searchbox', { name: 'Search columns' }))
+  // The clicked row stays in place until the step is opened again.
+  expect(screen.queryByText('Recent')).toBeNull()
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
   expect(screen.getByText('Recent')).toBeTruthy()
   expect(screen.getByText('All columns')).toBeTruthy()
   const radios = screen.getAllByRole('radio')

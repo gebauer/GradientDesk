@@ -124,9 +124,9 @@ function expand(e: Entry): Column[] {
 export const SEED_COLUMNS: readonly Column[] = ENTRIES.flatMap(expand)
 
 /** Applications that list every column. */
-export const LISTS_ALL_COLUMNS: readonly ApplicationId[] = ['general', 'equil']
+export const LISTS_ALL_COLUMNS: readonly ApplicationId[] = ['general', 'preloaded', 'equil']
 
-/** Columns listed for an application. "general" and "equil" list all; custom columns appear everywhere. */
+/** Columns listed for an application. General, pre-loaded elution and equilibration list all; custom columns appear everywhere. */
 export function columnsFor(app: ApplicationId, columns: readonly Column[]): Column[] {
   return columns.filter((c) => LISTS_ALL_COLUMNS.includes(app) || c.custom || c.apps.includes(app))
 }
