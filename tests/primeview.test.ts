@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { breakpoints } from '../src/domain/calc'
-import { SEED_COLUMNS } from '../src/domain/columns'
+import { columnsFor, SEED_COLUMNS } from '../src/domain/columns'
 import { fromPrimeViewTxt, maxPressureKpa, primeFileName, slotFromFileName, toPrimeViewTxt } from '../src/domain/primeview'
 import { validateProgram } from '../src/domain/validate'
 import { APPLICATIONS, templateFor } from '../src/domain/templates'
@@ -39,7 +39,7 @@ describe('export', () => {
 
   test('breakpoint rows are 62 characters and volumes strictly increase, for every template', () => {
     for (const app of APPLICATIONS) {
-      for (const c of SEED_COLUMNS.filter((x) => app.id === 'equil' || x.apps.includes(app.id))) {
+      for (const c of columnsFor(app.id, SEED_COLUMNS)) {
         const rows = toPrimeViewTxt(templateFor(app.id, c), c).split('\r\n').filter((l) => l.startsWith(','))
         expect(rows.every((l) => l.length === 62), `${app.id} / ${c.name}`).toBe(true)
         const vols = rows.map((l) => Number(l.split(',')[2]))
@@ -121,7 +121,7 @@ describe('import', () => {
 
   test('every template on every listed column survives export → import → export', () => {
     for (const app of APPLICATIONS) {
-      for (const c of SEED_COLUMNS.filter((x) => app.id === 'equil' || x.apps.includes(app.id))) {
+      for (const c of columnsFor(app.id, SEED_COLUMNS)) {
         const txt = toPrimeViewTxt(templateFor(app.id, c), c)
         const back = fromPrimeViewTxt(txt)
         expect(toPrimeViewTxt(back.phases, c), `${app.id} / ${c.name}`).toBe(txt)

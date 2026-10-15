@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent } from 'react'
-import { columnsFor } from '../../domain/columns'
+import { columnsFor, searchColumns } from '../../domain/columns'
 import { APPLICATIONS } from '../../domain/templates'
 import { allColumns, type Action, type State } from '../../state/store'
 import { fmt } from '../format'
@@ -9,7 +9,9 @@ const EMPTY = { name: '', cv: '', flow: '', p: '' }
 
 export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Action) => void }) {
   const app = APPLICATIONS.find((a) => a.id === state.app)
-  const cols = columnsFor(state.app, allColumns(state))
+  const listed = columnsFor(state.app, allColumns(state))
+  const [query, setQuery] = useState('')
+  const cols = searchColumns(listed, query)
   const [draft, setDraft] = useState(EMPTY)
   const set = (k: keyof typeof EMPTY) => (e: ChangeEvent<HTMLInputElement>) => setDraft((d) => ({ ...d, [k]: e.target.value }))
 
@@ -34,6 +36,23 @@ export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Ac
           Continue
         </button>
       </StepHeader>
+
+      <div className="col-search">
+        <input
+          type="search"
+          className="input"
+          aria-label="Search columns"
+          placeholder="Search by name, manufacturer or size, e.g. superdex 200, bio-rad, 5 ml"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setQuery('')
+          }}
+        />
+        <span className="muted" aria-live="polite">
+          {query ? `${cols.length} of ${listed.length} columns` : `${listed.length} columns`}
+        </span>
+      </div>
 
       <div className="card col-table" role="radiogroup" aria-label="Column">
         <div className="col-grid col-head label-caps">
@@ -99,6 +118,7 @@ export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Ac
             </div>
           )
         })}
+        {cols.length === 0 && <div className="col-empty">No columns match “{query}”.</div>}
       </div>
 
       <form

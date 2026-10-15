@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { calcProgram } from '../src/domain/calc'
-import { SEED_COLUMNS } from '../src/domain/columns'
+import { columnsFor, SEED_COLUMNS } from '../src/domain/columns'
 import { APPLICATIONS, defaultMethodName, defaultSelection, newPhaseAfter, templateFor } from '../src/domain/templates'
 import type { ApplicationId, Column } from '../src/domain/types'
 import { validateProgram } from '../src/domain/validate'
@@ -65,7 +65,7 @@ describe('templates (ml per phase)', () => {
 
   test('templates are valid for every application and listed column', () => {
     for (const app of APPLICATIONS) {
-      for (const c of SEED_COLUMNS.filter((x) => app.id === 'equil' || x.apps.includes(app.id))) {
+      for (const c of columnsFor(app.id, SEED_COLUMNS)) {
         const errors = validateProgram(templateFor(app.id, c), c).filter((i) => i.level === 'error')
         expect(errors, `${app.id} / ${c.name}`).toEqual([])
       }

@@ -172,7 +172,7 @@ export function initialState(): State {
   const customColumns = storage.loadCustomColumns()
   const library = storage.loadMethods()
   const base: State = {
-    app: 'imac',
+    app: 'general',
     colId: '',
     phases: [],
     sel: 0,
@@ -190,7 +190,7 @@ export function initialState(): State {
     const opened = reducer(base, { type: 'openMethod', method: current.method, message: '' })
     if (opened.phases.length) return { ...opened, step: current.step, sel: clampSel(current.sel, opened.phases), slot: current.slot, status: null }
   }
-  return reducer({ ...base, colId: 'histrap-hp-5-ml' }, { type: 'loadApp', app: 'imac' })
+  return reducer({ ...base, colId: 'histrap-hp-5-ml' }, { type: 'loadApp', app: 'general' })
 }
 
 /** App store with persistence: custom columns and library on change, current method on every change except while dragging. */

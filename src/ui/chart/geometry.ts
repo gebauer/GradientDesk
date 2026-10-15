@@ -53,6 +53,12 @@ export function dragPatch(p: Phase, v0: number, endMl: number, b: number, cv: nu
   return p.grad ? { len: Math.max(0.1, len), b1: nb } : { len: Math.max(0.1, len), b0: nb, b1: nb }
 }
 
+/** Patch for dragging an isocratic phase's %B line up or down: both %B values, length unchanged. */
+export function levelPatch(b: number): Partial<Phase> {
+  const nb = clampB(b)
+  return { b0: nb, b1: nb }
+}
+
 /** Keyboard: arrows change length by ±0.1 (Shift ×10) and %B by ±1 (Shift ×10). */
 export function keyPatch(p: Phase, key: string, shift: boolean): Partial<Phase> | null {
   const k = shift ? 10 : 1

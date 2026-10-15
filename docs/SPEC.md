@@ -1,7 +1,7 @@
 # Handoff: GradientDesk (ÄKTA prime)
 
 ## Overview
-A browser app for planning typical chromatography runs on an ÄKTA prime / prime plus. The user picks an application (IMAC, affinity, IEX, HIC, SEC / desalting, column equilibration), then a column (library or custom). The app loads a template program, which the user edits either graphically (drag handles in a %B-over-volume chart) or phase by phase in a form. The result is exported as a PrimeView-compatible breakpoint table (`.txt`). Methods are stored in the browser and can be exchanged as JSON. Existing JSON or `.txt` files can be imported and edited.
+A browser app for planning typical chromatography runs on an ÄKTA prime / prime plus. The user picks an application (General, IMAC, affinity, IEX, HIC, SEC / desalting, column equilibration), then a column (library or custom). The app loads a template program, which the user edits either graphically (drag handles in a %B-over-volume chart) or phase by phase in a form. The result is exported as a PrimeView-compatible breakpoint table (`.txt`). Methods are stored in the browser and can be exchanged as JSON. Existing JSON or `.txt` files can be imported and edited.
 
 UI language: **English**. Users: mixed lab staff, teaching and practical courses.
 
@@ -44,7 +44,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
 
 ### Step 1 — Choose an application
 - Description: "Loads a starting program with typical phases. Everything can be changed later."
-- 2-column grid of cards (six applications, three rows), gap 14 px. Card: `#fff`, padding 20 px, radius 6 px, border 1 px `#dcdcd8` (selected: 1.5 px `#1d1d1c`).
+- 2-column grid of cards, gap 14 px. The General card comes first and spans both columns; the other six follow in three rows. A fresh start (nothing stored) loads General. Card: `#fff`, padding 20 px, radius 6 px, border 1 px `#dcdcd8` (selected: 1.5 px `#1d1d1c`).
   - Name 16 px / 600, right: "N columns" 12 px muted.
   - Description 13 px `#55554f`, line-height 1.45.
   - Phase preview: a row of 6 px bars in the phase color with labels (11 px) underneath.
@@ -55,12 +55,13 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
   - Header: 11 px uppercase, letter-spacing .05em, `#6b6b68`.
   - Row: 14 px, padding 12 × 16, bottom border `#eeeeeb`, selected background `#f3f3f1`. The radio is a 14 px ring with an 8 px dot.
   - Custom columns show the "Custom" tag and an × button to remove them.
-  - Only columns for the current application are listed. "Column equilibration" lists all columns. Custom columns appear for every application.
+  - Only columns for the current application are listed. "General" and "Column equilibration" list all columns. Custom columns appear for every application.
+- **Search** above the table: input (max 480 px wide, placeholder "Search by name, manufacturer or size, e.g. superdex 200, bio-rad, 5 ml") and a muted count "n of m columns". Every word must appear in name, manufacturer or size ("5 ml"), case-insensitive. Escape clears it. Empty result: "No columns match “…”." in the table.
 - Card "Add custom column", right label "Saved in this browser only". Grid `2fr 1fr 1fr 1fr auto`: Name, CV (ml), Max flow, Pressure (MPa), button "Add to library" (outline). Name, CV and flow are required. The new column is selected immediately.
 - Changing the column clamps each phase's flow to the column's maximum flow. Columns without a max flow (`flow: null`) don't clamp.
 
 ### Step 3 — Program (main screen)
-- Description: "{App} on {Column} · drag a handle to change phase length and %B".
+- Description: "{App} on {Column} · drag a handle to change length and %B, drag a flat line to move it up or down, right-click a phase for more".
 - **Chart card** (`#fff`, border, radius 6, padding 12 16 8). Legend: Conc %B (2 px solid line), Flow (dashed), Fractions (ticks). The SVG is 1104 × 240.
   - Padding: left 36, right 8, top 24, bottom 26.
   - X axis: volume in ml, auto tick step from {0.5,1,2,5,10,20,25,50,100,200,500} so there are ≤ 12 ticks. The "ml" unit label sits at the right.
@@ -70,6 +71,8 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
   - Flow line: dashed `4 3`, 1.5 px `#8a8a86`, on its own scale (max = max(column max, phase flows) × 1.15).
   - Column max flow: dotted red line `oklch(0.6 0.15 25)` with the label "column max X ml/min". Not drawn when the column has no max flow.
   - Fraction ticks: 6 px vertical marks under the plot, one per fraction volume.
+  - **Level lines**: isocratic phases have an invisible 12 px hit line along their %B line (cursor ns-resize, faint highlight on hover). Dragging it changes Start and End %B together; length stays.
+  - **Context menu**: right-click (or menu key / Shift+F10) on a phase band, level line or phase list row selects the phase and opens a menu at the pointer: "Add phase after", "Delete phase" (red, disabled with one phase). Popover style, 180 px min width; closes on Escape, outside click, scroll.
   - **Handles**: one at the end of each phase (v1, %B end). Visible circle r=5, white (selected: phase color), 1.5 px ink stroke. Invisible hit area r=12, cursor move.
 - Below the chart: a 2-column grid `340px 1fr`, gap 16.
   - **Phases list**: header "Phases" with "n · total ml". Each row is a grid `22px 10px 1fr auto`: number, color square, name, meta ("5 CV · 5→100 %B"). The selected row has background `#f3f3f1` and an inset 3 px left ink bar. Footer button "+ Add phase after selected".
@@ -153,6 +156,7 @@ On import, the column is matched by id, then by name. If neither matches and CV 
 Lengths depend on the column (`rec` = recommended flow). Code: `src/domain/templates.ts`. Every phase uses `rec` unless stated; elution fractions are 2 ml (1 ml for columns below 5 ml); `grad` is true when start %B ≠ end %B. After loading, the first elution phase is selected (otherwise the first phase). Default method name: `{short}_{column name without non-alphanumerics}`, e.g. `IMAC_HisTrapHP5ml`.
 
 Application cards (name · short · description):
+- General · General · Any column. Equilibration, sample load, wash, linear gradient elution and re-equilibration as a starting point.
 - Affinity · IMAC · IMAC · His-tagged proteins on Ni columns. Imidazole step wash and linear gradient elution.
 - Affinity · tags and ligands · Affinity · GST, Strep, MBP, Protein A/G and heparin. Step elution with the elution buffer.
 - Ion exchange · IEX · Anion or cation exchange. Salt gradient elution, high-salt strip, re-equilibration.
@@ -160,6 +164,7 @@ Application cards (name · short · description):
 - Size exclusion · SEC · Isocratic run on a gel filtration or desalting column with fraction collection over 1.2 CV.
 - Column equilibration · Equilibrate · Water rinse followed by buffer equilibration. No sample, no fractions.
 
+- **General** (all columns): Equilibration 5 CV 0 %B (AZ) → Sample load 10 ml, A8, flow max(0.5, rec/5) → Wash 5 CV 0 %B → Elution 20 CV 0→100 %B, fractions, AZ → Re-equilibration 5 CV 0 %B.
 - **IMAC**: Equilibration 5 CV 0 %B (AZ on) → Sample load 25 ml, A8, flow 1 (5 ml column) or 0.5 → Wash 10 CV 5 %B → Elution 20 CV 5→100 %B, fractions 2 ml (1 ml for small columns), AZ on → Strip 5 CV 100 % → Re-equilibration 5 CV 0 %.
 - **IEX**: Equilibration 5 CV (AZ) → Sample load 20 ml, A8, flow max(0.5, rec/5) → Wash 5 CV → Elution 20 CV 0→50 %B, fractions → High-salt strip 5 CV 100 % → Re-equilibration 5 CV.
 - **Affinity** (proposal, step elution; B = elution buffer with glutathione / biotin / maltose / low pH): Equilibration 5 CV 0 %B (AZ) → Sample load 20 ml, A8, flow max(0.5, rec/5) → Wash 10 CV 0 %B → Elution 10 CV 100 %B isocratic, fractions 2 ml (1 ml for columns below 5 ml), AZ → Re-equilibration 5 CV 0 %B.

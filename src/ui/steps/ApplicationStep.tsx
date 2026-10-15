@@ -22,7 +22,7 @@ export function ApplicationStep({ state, dispatch }: { state: State; dispatch: (
             <button
               key={a.id}
               type="button"
-              className={`app-card${selected ? ' selected' : ''}`}
+              className={`app-card${selected ? ' selected' : ''}${a.id === 'general' ? ' wide' : ''}`}
               aria-pressed={selected}
               onClick={() => dispatch({ type: 'loadApp', app: a.id })}
             >

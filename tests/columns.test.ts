@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { columnsFor, defaultRecFlow, SEED_COLUMNS } from '../src/domain/columns'
+import { columnsFor, defaultRecFlow, searchColumns, SEED_COLUMNS } from '../src/domain/columns'
 import type { ApplicationId, Column } from '../src/domain/types'
 
 const byName = (name: string): Column => {
@@ -25,9 +25,10 @@ describe('seed column library', () => {
   })
 
   test('every application lists columns', () => {
-    const apps: ApplicationId[] = ['imac', 'affinity', 'iex', 'hic', 'sec', 'equil']
+    const apps: ApplicationId[] = ['general', 'imac', 'affinity', 'iex', 'hic', 'sec', 'equil']
     for (const app of apps) expect(columnsFor(app, SEED_COLUMNS).length, app).toBeGreaterThan(0)
     expect(columnsFor('equil', SEED_COLUMNS)).toHaveLength(SEED_COLUMNS.length)
+    expect(columnsFor('general', SEED_COLUMNS)).toHaveLength(SEED_COLUMNS.length)
   })
 
   test('expands sizes and product groups', () => {
@@ -55,4 +56,26 @@ test('defaultRecFlow', () => {
   expect(defaultRecFlow(5, null)).toBe(5)
   expect(defaultRecFlow(20, 10)).toBe(5)
   expect(defaultRecFlow(50, null)).toBe(5)
+})
+
+describe('column search', () => {
+  const names = (q: string) => searchColumns(SEED_COLUMNS, q).map((c) => c.name)
+
+  test('empty query lists everything', () => {
+    expect(searchColumns(SEED_COLUMNS, '  ')).toHaveLength(SEED_COLUMNS.length)
+  })
+
+  test('every word must match, in any order and case', () => {
+    expect(names('superdex 200')).toEqual(['HiLoad 16/600 Superdex 200 pg', 'HiLoad 26/600 Superdex 200 pg', 'Superdex 200 10/300 GL', 'Superdex 200 Increase 10/300 GL'])
+    expect(names('IMAC bio-rad 5')).toEqual(['EconoFit Profinity IMAC 5 ml', 'EconoFit Nuvia IMAC 5 ml', 'Bio-Scale Mini Profinity IMAC 5 ml', 'Bio-Scale Mini Nuvia IMAC 5 ml'])
+  })
+
+  test('matches manufacturer and size', () => {
+    expect(names('qiagen')).toEqual(['Ni-NTA Superflow Cartridge 1 ml', 'Ni-NTA Superflow Cartridge 5 ml'])
+    expect(names('120 ml')).toEqual(['HiLoad 16/600 Superdex 75 pg', 'HiLoad 16/600 Superdex 200 pg'])
+  })
+
+  test('no match gives an empty list', () => {
+    expect(names('zzz')).toEqual([])
+  })
 })

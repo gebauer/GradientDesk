@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { dragPatch, geometry, keyPatch, tickStep } from '../src/ui/chart/geometry'
+import { dragPatch, geometry, keyPatch, levelPatch, tickStep } from '../src/ui/chart/geometry'
 import type { Phase } from '../src/domain/types'
 
 const phase = (o: Partial<Phase> = {}): Phase => ({
@@ -40,4 +40,10 @@ test('keyboard steps', () => {
   expect(keyPatch(phase({ grad: false, b0: 5, b1: 5 }), 'ArrowUp', false)).toEqual({ b0: 6, b1: 6 })
   expect(keyPatch(phase({ len: 0.1 }), 'ArrowLeft', false)).toEqual({ len: 0.1 })
   expect(keyPatch(phase(), 'Enter', false)).toBeNull()
+})
+
+test('dragging an isocratic %B line moves both values and keeps the length', () => {
+  expect(levelPatch(42.4)).toEqual({ b0: 42, b1: 42 })
+  expect(levelPatch(120)).toEqual({ b0: 100, b1: 100 })
+  expect(levelPatch(-5)).toEqual({ b0: 0, b1: 0 })
 })

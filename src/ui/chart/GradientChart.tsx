@@ -1,10 +1,10 @@
-import { useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import type { ProgramCalc } from '../../domain/calc'
 import type { Column, Phase } from '../../domain/types'
 import type { Action } from '../../state/store'
 import { fmt } from '../format'
 import { phaseColor } from '../phaseColors'
-import { dragPatch, geometry, keyPatch, PAD, tickStep } from './geometry'
+import { dragPatch, geometry, keyPatch, levelPatch, PAD, tickStep } from './geometry'
 
 const H = 240
 const WARN = 'oklch(0.6 0.15 25)'
@@ -16,6 +16,8 @@ interface Props {
   sel: number
   dragDomain: number | null
   dispatch: (a: Action) => void
+  /** Right-click on a phase band. */
+  onPhaseMenu?: (e: ReactMouseEvent<SVGElement>, index: number) => void
 }
 
 function useWidth() {
@@ -33,30 +35,33 @@ function useWidth() {
   return [ref, w] as const
 }
 
-export function GradientChart({ phases, calc, column, sel, dragDomain, dispatch }: Props) {
+export function GradientChart({ phases, calc, column, sel, dragDomain, dispatch, onPhaseMenu }: Props) {
   const [ref, W] = useWidth()
   const svgRef = useRef<SVGSVGElement>(null)
-  const dragging = useRef<number | null>(null)
+  /** End handle (length + %B) or the %B line of an isocratic phase (%B only). */
+  const dragging = useRef<{ index: number; mode: 'end' | 'level' } | null>(null)
   const g = geometry(W, H, calc.total, dragDomain)
 
   const maxFlow = Math.max(column.flow ?? 0, ...phases.map((p) => p.flow)) * 1.15 || 1
   const yf = (f: number) => PAD.top + (1 - f / maxFlow) * g.ih
 
-  const startDrag = (e: ReactPointerEvent<SVGElement>, i: number) => {
+  const startDrag = (e: ReactPointerEvent<SVGElement>, i: number, mode: 'end' | 'level' = 'end') => {
+    if (e.button !== 0) return
     e.preventDefault()
     e.currentTarget.setPointerCapture(e.pointerId)
-    dragging.current = i
+    dragging.current = { index: i, mode }
     dispatch({ type: 'dragStart', index: i, domain: calc.total })
   }
 
   const moveDrag = (e: ReactPointerEvent<SVGElement>) => {
-    const i = dragging.current
+    const d = dragging.current
     const svg = svgRef.current
-    if (i === null || !svg) return
+    if (d === null || !svg) return
+    const i = d.index
     const r = svg.getBoundingClientRect()
     const px = ((e.clientX - r.left) / r.width) * W
     const py = ((e.clientY - r.top) / r.height) * H
-    const patch = dragPatch(phases[i], calc.phases[i].v0, g.ml(px), g.b(py), column.cv)
+    const patch = d.mode === 'level' ? levelPatch(g.b(py)) : dragPatch(phases[i], calc.phases[i].v0, g.ml(px), g.b(py), column.cv)
     dispatch({ type: 'updatePhase', index: i, patch })
   }
 
@@ -127,6 +132,7 @@ export function GradientChart({ phases, calc, column, sel, dragDomain, dispatch 
                   fill={phaseColor(p.type, i === sel ? 0.3 : 0.12)}
                   style={{ cursor: 'pointer' }}
                   onClick={() => dispatch({ type: 'selectPhase', index: i })}
+                  onContextMenu={onPhaseMenu && ((e) => onPhaseMenu(e, i))}
                 />
                 <rect x={x} y={PAD.top - 6} width={w} height={4} fill={phaseColor(p.type)} />
                 <text x={x + 5} y={PAD.top + 14} fill="#3a3a38" fontSize={11} pointerEvents="none">
@@ -162,6 +168,25 @@ export function GradientChart({ phases, calc, column, sel, dragDomain, dispatch 
           <path d={fracPath || 'M0 0'} stroke="var(--text-secondary)" strokeWidth={1} pointerEvents="none" />
           <polyline points={flowLine} fill="none" stroke="var(--chart-flow)" strokeDasharray="4 3" strokeWidth={1.5} pointerEvents="none" />
           <polyline points={line} fill="none" stroke="var(--ink)" strokeWidth={2} pointerEvents="none" />
+          {calc.phases.map((c, i) =>
+            phases[i].grad ? null : (
+              <line
+                key={i}
+                className="level-line"
+                aria-hidden="true"
+                x1={g.x(c.v0)}
+                x2={g.x(c.v1)}
+                y1={g.y(c.b0)}
+                y2={g.y(c.b0)}
+                stroke="transparent"
+                strokeWidth={12}
+                onPointerDown={(e) => startDrag(e, i, 'level')}
+                onContextMenu={onPhaseMenu && ((e) => onPhaseMenu(e, i))}
+              >
+                <title>Drag up or down to change %B</title>
+              </line>
+            ),
+          )}
           {calc.phases.map((c, i) => {
             const p = phases[i]
             return (

@@ -28,7 +28,7 @@ export interface MethodFileV1 {
 
 export const CURRENT_VERSION = 1
 
-const APP_IDS: readonly ApplicationId[] = ['imac', 'affinity', 'iex', 'hic', 'sec', 'equil']
+const APP_IDS: readonly ApplicationId[] = ['general', 'imac', 'affinity', 'iex', 'hic', 'sec', 'equil']
 const PHASE_TYPES: readonly PhaseType[] = ['equil', 'sample', 'wash', 'elution', 'strip']
 
 export class MethodImportError extends Error {}
@@ -127,7 +127,7 @@ export function fromJson(text: string): Method {
     format: 'gradientdesk',
     version: 1,
     name: str(data.name, 'Imported method'),
-    application: APP_IDS.includes(data.application as ApplicationId) ? (data.application as ApplicationId) : 'equil',
+    application: APP_IDS.includes(data.application as ApplicationId) ? (data.application as ApplicationId) : 'general',
     system: 'AKTAprime',
     column: readColumn(data.column),
     phases: data.phases.map(readPhase),

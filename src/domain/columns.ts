@@ -123,9 +123,25 @@ function expand(e: Entry): Column[] {
 
 export const SEED_COLUMNS: readonly Column[] = ENTRIES.flatMap(expand)
 
-/** Columns listed for an application. "equil" lists all; custom columns appear everywhere. */
+/** Applications that list every column. */
+export const LISTS_ALL_COLUMNS: readonly ApplicationId[] = ['general', 'equil']
+
+/** Columns listed for an application. "general" and "equil" list all; custom columns appear everywhere. */
 export function columnsFor(app: ApplicationId, columns: readonly Column[]): Column[] {
-  return columns.filter((c) => app === 'equil' || c.custom || c.apps.includes(app))
+  return columns.filter((c) => LISTS_ALL_COLUMNS.includes(app) || c.custom || c.apps.includes(app))
+}
+
+/**
+ * Column search: every word of the query must appear in the name, manufacturer or size
+ * ("superdex 200", "bio-rad imac", "5 ml"). Case-insensitive; an empty query matches all.
+ */
+export function searchColumns(columns: readonly Column[], query: string): Column[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  if (!words.length) return [...columns]
+  return columns.filter((c) => {
+    const text = `${c.name} ${c.manufacturer} ${c.cv} ml ${c.custom ? 'custom' : ''}`.toLowerCase()
+    return words.every((w) => text.includes(w))
+  })
 }
 
 /** Default flow for a custom column: 50 % of its max flow. */

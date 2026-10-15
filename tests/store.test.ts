@@ -8,10 +8,10 @@ const NOW = '2026-10-15T10:00:00.000Z'
 beforeEach(() => localStorage.clear())
 
 describe('initial state', () => {
-  test('starts on step 1 with IMAC on HisTrap HP 5 ml', () => {
+  test('starts on step 1 with General on HisTrap HP 5 ml', () => {
     const s = initialState()
-    expect(s).toMatchObject({ step: 1, app: 'imac', colId: 'histrap-hp-5-ml', sel: 3, methodName: 'IMAC_HisTrapHP5ml' })
-    expect(s.phases).toHaveLength(6)
+    expect(s).toMatchObject({ step: 1, app: 'general', colId: 'histrap-hp-5-ml', sel: 3, methodName: 'General_HisTrapHP5ml' })
+    expect(s.phases).toHaveLength(5)
   })
 
   test('restores the autosaved method', () => {
@@ -25,7 +25,7 @@ describe('initial state', () => {
   test('ignores broken storage', () => {
     localStorage.setItem('gd.current', '{not json')
     localStorage.setItem('gd.methods', '"x"')
-    expect(initialState().app).toBe('imac')
+    expect(initialState().app).toBe('general')
   })
 })
 
@@ -56,9 +56,9 @@ describe('phases', () => {
     let s = run(initialState(), { type: 'selectPhase', index: 0 }, { type: 'addPhase' })
     expect(s.sel).toBe(1)
     expect(s.phases[1].name).toBe('New phase')
-    expect(s.phases).toHaveLength(7)
-    s = run(s, { type: 'deletePhase' })
     expect(s.phases).toHaveLength(6)
+    s = run(s, { type: 'deletePhase' })
+    expect(s.phases).toHaveLength(5)
     expect(s.sel).toBe(0)
     s = run(s, { type: 'loadApp', app: 'equil' }, { type: 'deletePhase' }, { type: 'deletePhase' })
     expect(s.phases).toHaveLength(1)

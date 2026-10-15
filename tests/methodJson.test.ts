@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { SEED_COLUMNS } from '../src/domain/columns'
+import { columnsFor, SEED_COLUMNS } from '../src/domain/columns'
 import { fromJson, MethodImportError, resolveColumn, toJson, toMethodFile } from '../src/domain/methodJson'
 import { APPLICATIONS, templateFor } from '../src/domain/templates'
 import type { Column, Method } from '../src/domain/types'
@@ -21,7 +21,7 @@ const method = (o: Partial<Method> = {}): Method => ({
 describe('JSON round trip', () => {
   test('every template on every listed column', () => {
     for (const app of APPLICATIONS) {
-      for (const c of SEED_COLUMNS.filter((x) => app.id === 'equil' || x.apps.includes(app.id))) {
+      for (const c of columnsFor(app.id, SEED_COLUMNS)) {
         const m = method({ application: app.id, column: c, phases: templateFor(app.id, c) })
         expect(fromJson(toJson(m))).toEqual(m)
       }
@@ -61,8 +61,8 @@ describe('import', () => {
     })
   })
 
-  test('unknown application falls back to column equilibration', () => {
-    expect(fromJson(file({ application: 'xyz' })).application).toBe('equil')
+  test('unknown application falls back to General', () => {
+    expect(fromJson(file({ application: 'xyz' })).application).toBe('general')
   })
 })
 

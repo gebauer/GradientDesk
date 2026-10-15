@@ -1,3 +1,4 @@
+import { useCallback, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { calcProgram } from '../../domain/calc'
 import { APPLICATIONS, PHASE_TYPES } from '../../domain/templates'
 import type { Inlet, Phase, PhaseType } from '../../domain/types'
@@ -9,6 +10,8 @@ import { Segmented } from '../form/Segmented'
 import { Toggle } from '../form/Toggle'
 import { fmt } from '../format'
 import { phaseColor } from '../phaseColors'
+import { menuAnchor, type MenuAnchor } from '../menuAnchor'
+import { PhaseMenu } from '../PhaseMenu'
 import { StepHeader } from '../StepHeader'
 
 const INLETS: Inlet[] = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -25,10 +28,17 @@ export function ProgramStep({ state, dispatch }: { state: State; dispatch: (a: A
   const issues = validateProgram(state.phases, column).filter((i) => i.phase === sel)
   const issue = (field: string) => issues.find((i) => i.field === field)
   const id = (k: string) => `phase-${k}`
+  const [menu, setMenu] = useState<MenuAnchor | null>(null)
+  const closeMenu = useCallback(() => setMenu(null), [])
+  const openMenu = (e: ReactMouseEvent<Element>, index: number) => {
+    e.preventDefault()
+    dispatch({ type: 'selectPhase', index })
+    setMenu(menuAnchor(e, index))
+  }
 
   return (
     <>
-      <StepHeader title="Program" description={`${app?.name} on ${column.name} · drag a handle to change phase length and %B`}>
+      <StepHeader title="Program" description={`${app?.name} on ${column.name} · drag a handle to change length and %B, drag a flat line to move it up or down, right-click a phase for more`}>
         <button type="button" className="btn btn-lg" onClick={() => dispatch({ type: 'setStep', step: 2 })}>
           Back
         </button>
@@ -37,7 +47,7 @@ export function ProgramStep({ state, dispatch }: { state: State; dispatch: (a: A
         </button>
       </StepHeader>
 
-      <GradientChart phases={state.phases} calc={calc} column={column} sel={sel} dragDomain={state.dragDomain} dispatch={dispatch} />
+      <GradientChart phases={state.phases} calc={calc} column={column} sel={sel} dragDomain={state.dragDomain} dispatch={dispatch} onPhaseMenu={openMenu} />
 
       <div className="program-grid">
         <div className="card phase-list">
@@ -54,7 +64,9 @@ export function ProgramStep({ state, dispatch }: { state: State; dispatch: (a: A
                   type="button"
                   className={`phase-row row${i === sel ? ' selected' : ''}`}
                   aria-current={i === sel || undefined}
+                  aria-haspopup="menu"
                   onClick={() => dispatch({ type: 'selectPhase', index: i })}
+                  onContextMenu={(e) => openMenu(e, i)}
                 >
                   <span className="phase-num">{i + 1}</span>
                   <span className="swatch" style={{ background: phaseColor(q.type) }} />
@@ -192,6 +204,23 @@ export function ProgramStep({ state, dispatch }: { state: State; dispatch: (a: A
           </div>
         </section>
       </div>
+
+      {menu && state.phases[menu.index] && (
+        <PhaseMenu
+          anchor={menu}
+          phaseName={state.phases[menu.index].name}
+          canDelete={n > 1}
+          onAdd={() => {
+            dispatch({ type: 'selectPhase', index: menu.index })
+            dispatch({ type: 'addPhase' })
+          }}
+          onDelete={() => {
+            dispatch({ type: 'selectPhase', index: menu.index })
+            dispatch({ type: 'deletePhase' })
+          }}
+          onClose={closeMenu}
+        />
+      )}
     </>
   )
 }

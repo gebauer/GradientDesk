@@ -57,5 +57,32 @@ test('save adds the method to the library', async () => {
   await user.click(screen.getByRole('button', { name: 'Save' }))
   expect(screen.getByRole('button', { name: 'Methods (1) ▾' })).toBeTruthy()
   await user.click(screen.getByRole('button', { name: 'Methods (1) ▾' }))
-  expect(within(screen.getByRole('dialog', { name: 'Saved methods' })).getByText('IMAC_HisTrapHP5ml')).toBeTruthy()
+  expect(within(screen.getByRole('dialog', { name: 'Saved methods' })).getByText('General_HisTrapHP5ml')).toBeTruthy()
+})
+
+test('right-click on a phase offers delete', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await user.click(screen.getByRole('button', { name: /Program/ }))
+  const row = screen.getByRole('button', { name: /^2\s*Sample load/ })
+  await user.pointer({ keys: '[MouseRight]', target: row })
+  const menu = screen.getByRole('menu', { name: 'Phase 2, Sample load' })
+  await user.click(within(menu).getByRole('menuitem', { name: 'Delete phase' }))
+  expect(screen.queryByRole('menu')).toBeNull()
+  expect(screen.queryByRole('button', { name: /Sample load/ })).toBeNull()
+  expect(screen.getByRole('button', { name: /^2\s*Wash/ })).toBeTruthy()
+})
+
+test('column search filters the table', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(screen.getAllByRole('radio')).toHaveLength(101)
+  await user.type(screen.getByRole('searchbox', { name: 'Search columns' }), 'superdex 75')
+  expect(screen.getAllByRole('radio').map((r) => r.textContent)).toEqual([
+    expect.stringContaining('HiLoad 16/600 Superdex 75 pg'),
+    expect.stringContaining('HiLoad 26/600 Superdex 75 pg'),
+    expect.stringContaining('Superdex 75 10/300 GL'),
+  ])
+  expect(screen.getByText('3 of 101 columns')).toBeTruthy()
 })
