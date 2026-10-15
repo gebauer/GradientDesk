@@ -204,7 +204,8 @@ Values are unverified; check them against the vendor datasheets later. A custom 
 - **Shadow**: only the popover, `0 10px 28px rgba(0,0,0,.14)`
 
 ## Assets
-None. There are no images or icon fonts; glyphs (× ‹ › ▾ ← →) are plain text characters.
+- `public/favicon.svg`: app icon (64 × 64, rounded ink square with a white %B gradient line over an orange elution peak). Used as the browser favicon.
+- No other images or icon fonts; glyphs (× ‹ › ▾ ← →) are plain text characters.
 
 ## Files
 - `docs/prototype/GradientDesk.dc.html` – the prototype (layout 1a is the reference; logic at the bottom of the file)
