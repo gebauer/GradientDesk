@@ -90,3 +90,21 @@ export function clampFlows(phases: readonly Phase[], column: Column): Phase[] {
   if (max === null) return [...phases]
   return phases.map((p) => (p.flow > max ? { ...p, flow: max } : p))
 }
+
+/**
+ * Applies a patch to phase i and keeps connected gradients attached: when the phase's start %B
+ * changes, a gradient before it that ended at the old start follows; when its end %B changes, a
+ * gradient after it that started at the old end follows. Isocratic neighbours keep their level.
+ */
+export function updatePhaseLinked(phases: readonly Phase[], i: number, patch: Partial<Phase>): Phase[] {
+  const old = phases[i]
+  if (!old) return [...phases]
+  const next = { ...old, ...patch }
+  const out = [...phases]
+  out[i] = next
+  const prev = out[i - 1]
+  if (prev?.grad && next.b0 !== old.b0 && prev.b1 === old.b0) out[i - 1] = { ...prev, b1: next.b0 }
+  const after = out[i + 1]
+  if (after?.grad && endB(next) !== endB(old) && after.b0 === endB(old)) out[i + 1] = { ...after, b0: endB(next) }
+  return out
+}

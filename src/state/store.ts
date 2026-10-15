@@ -1,5 +1,5 @@
 import { useEffect, useReducer } from 'react'
-import { clampFlows, convertLength } from '../domain/calc'
+import { clampFlows, convertLength, updatePhaseLinked } from '../domain/calc'
 import { columnsFor, customRecFlow, SEED_COLUMNS, touchRecent } from '../domain/columns'
 import { resolveColumn } from '../domain/methodJson'
 import { MAX_SLOT } from '../domain/primeview'
@@ -111,7 +111,7 @@ export function reducer(s: State, a: Action): State {
     case 'selectPhase':
       return { ...s, sel: clampSel(a.index, s.phases) }
     case 'updatePhase':
-      return { ...s, phases: s.phases.map((p, i) => (i === a.index ? { ...p, ...a.patch } : p)) }
+      return { ...s, phases: updatePhaseLinked(s.phases, a.index, a.patch) }
     case 'setUnit': {
       const p = s.phases[a.index]
       if (!p || p.unit === a.unit) return s

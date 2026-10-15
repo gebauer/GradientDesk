@@ -118,6 +118,8 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
 - **Autosave**: the current working method is written to storage on every change (not while dragging) and restored on load.
 - No animations. Hover states are not designed. Add a subtle background darken (about 4 %) on buttons and rows.
 
+- **Linked %B edits**: any edit of a phase (drag, keyboard, form) keeps connected gradients attached. When a phase's start %B changes, a gradient phase before it that ended at the old start value moves its end along; when a phase's end %B changes, a gradient phase after it that started at the old end value moves its start along. Isocratic neighbours keep their level (a %B step appears instead), so an edit never cascades through the program.
+
 ## Calculations
 - Phase ml = length × column CV (unit CV) or length (unit ml).
 - Phase start volume = sum of previous phase volumes. Phase time = ml / flow. Total time = Σ.

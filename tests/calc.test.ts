@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { breakpoints, calcProgram, clampFlows, convertLength, maxB, phaseMl } from '../src/domain/calc'
+import { breakpoints, calcProgram, clampFlows, convertLength, maxB, phaseMl, updatePhaseLinked } from '../src/domain/calc'
 import type { Column, Phase } from '../src/domain/types'
 import { validatePhase } from '../src/domain/validate'
 
@@ -87,5 +87,36 @@ describe('mixer', () => {
     expect(steep[0].message).toContain('4 ml mixer')
     expect(validatePhase(phase({ len: 2, b1: 100, grad: true }), 0, column)).toEqual([])
     expect(validatePhase(phase({ len: 1, b0: 50, b1: 50 }), 0, column)).toEqual([])
+  })
+})
+
+describe('linked %B edits', () => {
+  // Elution gradient 5→100, strip 100, re-equilibration 0 (the IMAC tail)
+  const tail = () => [
+    phase({ name: 'Elution', b0: 5, b1: 100, grad: true }),
+    phase({ name: 'Strip', b0: 100, b1: 100 }),
+    phase({ name: 'Re-equilibration', b0: 0, b1: 0 }),
+  ]
+
+  test('moving an isocratic phase pulls the end of the gradient before it', () => {
+    const out = updatePhaseLinked(tail(), 1, { b0: 53, b1: 53 })
+    expect(out.map((p) => [p.b0, p.b1])).toEqual([[5, 53], [53, 53], [0, 0]])
+  })
+
+  test('isocratic neighbours keep their level', () => {
+    const out = updatePhaseLinked(tail(), 0, { b1: 80 })
+    expect(out.map((p) => [p.b0, p.b1])).toEqual([[5, 80], [100, 100], [0, 0]])
+    expect(updatePhaseLinked(tail(), 2, { b0: 20, b1: 20 })[1]).toMatchObject({ b0: 100, b1: 100 })
+  })
+
+  test('a gradient after the phase follows its end', () => {
+    const ph = [phase({ b0: 10, b1: 10 }), phase({ b0: 10, b1: 60, grad: true })]
+    expect(updatePhaseLinked(ph, 0, { b0: 30, b1: 30 })[1]).toMatchObject({ b0: 30, b1: 60 })
+  })
+
+  test('only connected neighbours follow; other fields never touch neighbours', () => {
+    const ph = [phase({ b0: 0, b1: 40, grad: true }), phase({ b0: 50, b1: 50 })]
+    expect(updatePhaseLinked(ph, 1, { b0: 70, b1: 70 })[0].b1).toBe(40)
+    expect(updatePhaseLinked(tail(), 1, { len: 9, flow: 2 })).toEqual([tail()[0], { ...tail()[1], len: 9, flow: 2 }, tail()[2]])
   })
 })
