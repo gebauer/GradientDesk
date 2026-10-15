@@ -154,12 +154,21 @@ Breakpoint	Volume	Conc %B	Flow	Fraction	InletA	Autozero
 - Phase names are not in the txt, so the type name is used.
 
 ## Application templates
-Lengths depend on the column (`rec` = recommended flow).
+Lengths depend on the column (`rec` = recommended flow). Code: `src/domain/templates.ts`. Every phase uses `rec` unless stated; elution fractions are 2 ml (1 ml for columns below 5 ml); `grad` is true when start %B ≠ end %B. After loading, the first elution phase is selected (otherwise the first phase). Default method name: `{short}_{column name without non-alphanumerics}`, e.g. `IMAC_HisTrapHP5ml`.
+
+Application cards (name · short · description):
+- Affinity · IMAC · IMAC · His-tagged proteins on Ni columns. Imidazole step wash and linear gradient elution.
+- Affinity · tags and ligands · Affinity · GST, Strep, MBP, Protein A/G and heparin. Step elution with the elution buffer.
+- Ion exchange · IEX · Anion or cation exchange. Salt gradient elution, high-salt strip, re-equilibration.
+- Hydrophobic interaction · HIC · Bind in high salt, elute with a decreasing salt gradient, strip without salt.
+- Size exclusion · SEC · Isocratic run on a gel filtration or desalting column with fraction collection over 1.2 CV.
+- Column equilibration · Equilibrate · Water rinse followed by buffer equilibration. No sample, no fractions.
+
 - **IMAC**: Equilibration 5 CV 0 %B (AZ on) → Sample load 25 ml, A8, flow 1 (5 ml column) or 0.5 → Wash 10 CV 5 %B → Elution 20 CV 5→100 %B, fractions 2 ml (1 ml for small columns), AZ on → Strip 5 CV 100 % → Re-equilibration 5 CV 0 %.
 - **IEX**: Equilibration 5 CV (AZ) → Sample load 20 ml, A8, flow max(0.5, rec/5) → Wash 5 CV → Elution 20 CV 0→50 %B, fractions → High-salt strip 5 CV 100 % → Re-equilibration 5 CV.
-- **Affinity** (proposal, step elution; B = elution buffer with glutathione / biotin / maltose / low pH): Equilibration 5 CV 0 %B (AZ) → Sample load 20 ml, A8, flow max(0.5, rec/5) → Wash 10 CV 0 %B → Elution 10 CV 100 %B isocratic, fractions 2 ml (1 ml for columns ≤ 1 ml), AZ → Re-equilibration 5 CV 0 %B.
+- **Affinity** (proposal, step elution; B = elution buffer with glutathione / biotin / maltose / low pH): Equilibration 5 CV 0 %B (AZ) → Sample load 20 ml, A8, flow max(0.5, rec/5) → Wash 10 CV 0 %B → Elution 10 CV 100 %B isocratic, fractions 2 ml (1 ml for columns below 5 ml), AZ → Re-equilibration 5 CV 0 %B.
 - **HIC** (proposal; A = high-salt binding buffer, B = no salt): Equilibration 5 CV 0 %B (AZ) → Sample load 20 ml, A8, flow max(0.5, rec/5) → Wash 5 CV 0 %B → Elution 20 CV 0→100 %B, fractions → Strip 5 CV 100 %B → Re-equilibration 5 CV 0 %B.
-- **SEC** (includes desalting columns): Equilibration 1 CV (AZ) → Sample injection 2 ml → Isocratic elution 1.2 CV, fractions 2 ml, AZ.
+- **SEC** (includes desalting columns): Equilibration 1 CV (AZ) → Sample injection 2 ml, inlet A1, flow rec → Isocratic elution 1.2 CV, fractions 2 ml, AZ.
 - **Column equilibration**: Water rinse 3 CV, inlet A2 (AZ) → Equilibration 5 CV (AZ).
 
 ## Column library (seed)
