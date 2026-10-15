@@ -8,6 +8,8 @@ export interface CurrentDoc {
   method: Method
   step: 1 | 2 | 3 | 4
   sel: number
+  /** PrimeView method number 1–99 */
+  slot: number
 }
 
 interface Stored<T> {
@@ -71,14 +73,15 @@ export function saveMethods(methods: readonly Method[]): void {
 export function loadCurrent(): CurrentDoc | null {
   const data = read(KEYS.current)
   if (typeof data !== 'object' || data === null || !('method' in data)) return null
-  const d = data as { method: unknown; step?: unknown; sel?: unknown }
+  const d = data as { method: unknown; step?: unknown; sel?: unknown; slot?: unknown }
   const method = parseMethod(d.method)
   if (!method) return null
   const step = [1, 2, 3, 4].includes(d.step as number) ? (d.step as CurrentDoc['step']) : 3
   const sel = typeof d.sel === 'number' ? d.sel : 0
-  return { method, step, sel }
+  const slot = typeof d.slot === 'number' && d.slot >= 1 && d.slot <= 99 ? Math.round(d.slot) : 1
+  return { method, step, sel, slot }
 }
 
 export function saveCurrent(doc: CurrentDoc): void {
-  write(KEYS.current, { method: toMethodFile(doc.method), step: doc.step, sel: doc.sel })
+  write(KEYS.current, { method: toMethodFile(doc.method), step: doc.step, sel: doc.sel, slot: doc.slot })
 }

@@ -2,6 +2,7 @@ import { useEffect, useReducer } from 'react'
 import { clampFlows, convertLength } from '../domain/calc'
 import { columnsFor, customRecFlow, SEED_COLUMNS } from '../domain/columns'
 import { resolveColumn } from '../domain/methodJson'
+import { MAX_SLOT } from '../domain/primeview'
 import { defaultMethodName, defaultSelection, newPhaseAfter, templateFor } from '../domain/templates'
 import type { ApplicationId, Column, LengthUnit, Method, Phase } from '../domain/types'
 import * as storage from '../storage/local'
@@ -21,6 +22,8 @@ export interface State {
   sel: number
   step: Step
   methodName: string
+  /** PrimeView method number 1–99 → PrimeMeth_NNN.txt */
+  slot: number
   customColumns: Column[]
   library: Method[]
   showMethods: boolean
@@ -41,12 +44,13 @@ export type Action =
   | { type: 'deletePhase' }
   | { type: 'setStep'; step: Step }
   | { type: 'setMethodName'; name: string }
+  | { type: 'setSlot'; slot: number }
   | { type: 'dragStart'; index: number; domain: number }
   | { type: 'dragEnd' }
   | { type: 'save'; now: string }
   | { type: 'deleteMethod'; index: number }
   | { type: 'openMethod'; method: Method; message: string }
-  | { type: 'importPhases'; phases: Phase[]; name: string; status: Status }
+  | { type: 'importPhases'; phases: Phase[]; name: string; slot: number | null; status: Status }
   | { type: 'toggleMethods' }
   | { type: 'closeMethods' }
   | { type: 'setStatus'; status: Status | null }
@@ -122,6 +126,8 @@ export function reducer(s: State, a: Action): State {
       return { ...s, step: a.step }
     case 'setMethodName':
       return { ...s, methodName: a.name }
+    case 'setSlot':
+      return { ...s, slot: Math.min(MAX_SLOT, Math.max(1, Math.round(a.slot) || 1)) }
     case 'dragStart':
       return { ...s, sel: a.index, dragDomain: a.domain }
     case 'dragEnd':
@@ -152,7 +158,7 @@ export function reducer(s: State, a: Action): State {
       }
     }
     case 'importPhases':
-      return { ...s, phases: a.phases, sel: 0, methodName: a.name, step: 3, showMethods: false, status: a.status }
+      return { ...s, phases: a.phases, sel: 0, methodName: a.name, slot: a.slot ?? s.slot, step: 3, showMethods: false, status: a.status }
     case 'toggleMethods':
       return { ...s, showMethods: !s.showMethods }
     case 'closeMethods':
@@ -172,6 +178,7 @@ export function initialState(): State {
     sel: 0,
     step: 1,
     methodName: '',
+    slot: 1,
     customColumns,
     library,
     showMethods: false,
@@ -181,7 +188,7 @@ export function initialState(): State {
   const current = storage.loadCurrent()
   if (current) {
     const opened = reducer(base, { type: 'openMethod', method: current.method, message: '' })
-    if (opened.phases.length) return { ...opened, step: current.step, sel: clampSel(current.sel, opened.phases), status: null }
+    if (opened.phases.length) return { ...opened, step: current.step, sel: clampSel(current.sel, opened.phases), slot: current.slot, status: null }
   }
   return reducer({ ...base, colId: 'histrap-hp-5-ml' }, { type: 'loadApp', app: 'imac' })
 }
@@ -194,7 +201,7 @@ export function useAppStore() {
   useEffect(() => storage.saveMethods(state.library), [state.library])
   useEffect(() => {
     if (state.dragDomain !== null) return
-    storage.saveCurrent({ method: currentMethod(state, new Date().toISOString()), step: state.step, sel: state.sel })
+    storage.saveCurrent({ method: currentMethod(state, new Date().toISOString()), step: state.step, sel: state.sel, slot: state.slot })
   }, [state])
 
   const status = state.status

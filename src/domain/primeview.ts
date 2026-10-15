@@ -6,13 +6,14 @@ import type { Column, Inlet, Phase, PhaseType } from './types'
 
 /**
  * ÄKTA prime "Method Dump" text file (AKTAprime V2.02, dump format V1.00), as written by PrimeView.
- * Reference: tests/golden/sample-imac-gradient.txt. CRLF line endings, space-padded columns
- * where every field starts with a comma, trailing spaces are part of the format.
+ * Spec: docs/primeview-format.md. Reference: tests/golden/sample-imac-gradient.txt.
+ * ASCII, CRLF on every line, space-padded fields that each start with a comma.
  */
 
 const CRLF = '\r\n'
 
 const HEADER = [
+  '',
   '*****************************************************************',
   '** Method Dump',
   '**',
@@ -36,6 +37,20 @@ function row(fields: string[]): string {
 }
 
 /** Max pressure alarm in kPa: the column limit, capped by the system limit. */
+/** PrimeView method slots: PrimeMeth_001.txt … PrimeMeth_099.txt in C:\UNICORN\Bin\Prime\. */
+export const MAX_SLOT = 99
+
+export function primeFileName(slot: number): string {
+  return `PrimeMeth_${String(slot).padStart(3, '0')}.txt`
+}
+
+/** Slot number from a PrimeView file name, or null. */
+export function slotFromFileName(name: string): number | null {
+  const m = /^PrimeMeth_(\d{3})\.txt$/i.exec(name)
+  const n = m ? Number(m[1]) : NaN
+  return n >= 1 && n <= MAX_SLOT ? n : null
+}
+
 export function maxPressureKpa(column: Column): number {
   return Math.round(Math.min(column.p, SYSTEM_MAX_PRESSURE) * 1000)
 }
@@ -152,19 +167,38 @@ export function fromPrimeViewTxt(text: string): PrimeViewImport {
   if (rows.length < 2) throw new MethodImportError('The method needs at least two breakpoints.')
   rows.forEach((r, i) => {
     if (!Number.isFinite(r.v)) throw new MethodImportError(`Breakpoint ${i + 1} has no volume.`)
-    if (i > 0 && r.v < rows[i - 1].v) throw new MethodImportError(`Breakpoint ${i + 1}: volumes must not decrease.`)
+    if (i === 0 && r.v !== 0) throw new MethodImportError('The first breakpoint must be at 0.0 ml.')
+    if (i > 0 && r.v <= rows[i - 1].v) throw new MethodImportError(`Breakpoint ${i + 1}: volumes must increase.`)
   })
 
   const phases: Phase[] = []
+  /** Start volume carried over from a folded %B step segment. */
+  let carry: number | null = null
   for (let i = 0; i < rows.length - 1; i++) {
     const a = rows[i]
     const b = rows[i + 1]
-    if (b.v - a.v <= 1e-9) continue
+    const prev = phases.at(-1)
+    // A %B step is written as A's end breakpoint followed by B's start at +0.1 ml (docs/primeview-format.md §10).
+    const isStep =
+      prev !== undefined &&
+      i < rows.length - 2 &&
+      b.v - a.v <= 0.1 + 1e-9 &&
+      a.conc !== b.conc &&
+      !a.az &&
+      !a.inject &&
+      a.conc === prev.b1 &&
+      a.flow === prev.flow &&
+      a.frac === prev.frac &&
+      a.inlet === prev.inlet
+    if (isStep) {
+      carry = a.v
+      continue
+    }
     const type = guessType(a, b.conc, phases.length === 0)
     phases.push({
       name: typeName(type),
       type,
-      len: round1(b.v - a.v),
+      len: round1(b.v - (carry ?? a.v)),
       unit: 'ml',
       b0: a.conc,
       b1: b.conc,
@@ -174,8 +208,8 @@ export function fromPrimeViewTxt(text: string): PrimeViewImport {
       inlet: a.inlet,
       az: a.az,
     })
+    carry = null
   }
-  if (phases.length === 0) throw new MethodImportError('All breakpoints are at the same volume.')
 
   const warnings: string[] = []
   if (rows.some((r) => r.inject)) warnings.push('Injection valve positions (Inj) were not imported.')

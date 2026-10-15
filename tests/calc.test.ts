@@ -79,3 +79,13 @@ describe('validation', () => {
     ])
   })
 })
+
+describe('mixer', () => {
+  test('gradients over less than 10 ml warn about the 4 ml mixer', () => {
+    const steep = validatePhase(phase({ len: 1.8, b1: 100, grad: true }), 0, column)
+    expect(steep.map((i) => [i.field, i.level])).toEqual([['len', 'warning']])
+    expect(steep[0].message).toContain('4 ml mixer')
+    expect(validatePhase(phase({ len: 2, b1: 100, grad: true }), 0, column)).toEqual([])
+    expect(validatePhase(phase({ len: 1, b0: 50, b1: 50 }), 0, column)).toEqual([])
+  })
+})

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { fromJson, MethodImportError, toJson } from '../domain/methodJson'
-import { fromPrimeViewTxt } from '../domain/primeview'
+import { fromPrimeViewTxt, slotFromFileName } from '../domain/primeview'
 import { APPLICATIONS } from '../domain/templates'
 import { currentMethod, type Action, type State } from '../state/store'
 import { downloadText } from './download'
@@ -34,7 +34,7 @@ export function MethodsPopover({ state, dispatch, onClose }: { state: State; dis
       } else {
         const { phases, warnings } = fromPrimeViewTxt(text)
         const text2 = [`Imported ${file.name}`, ...warnings].join(' ')
-        dispatch({ type: 'importPhases', phases, name: file.name.replace(/\.[^.]+$/, ''), status: { text: text2, sticky: warnings.length > 0 } })
+        dispatch({ type: 'importPhases', phases, name: file.name.replace(/\.[^.]+$/, ''), slot: slotFromFileName(file.name), status: { text: text2, sticky: warnings.length > 0 } })
       }
     } catch (err) {
       const reason = err instanceof MethodImportError ? err.message : 'The file could not be read.'

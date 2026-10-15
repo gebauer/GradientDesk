@@ -16,9 +16,9 @@ describe('initial state', () => {
 
   test('restores the autosaved method', () => {
     const s = run(initialState(), { type: 'loadApp', app: 'sec' }, { type: 'setStep', step: 3 })
-    storage.saveCurrent({ method: currentMethod(s, NOW), step: s.step, sel: 1 })
+    storage.saveCurrent({ method: currentMethod(s, NOW), step: s.step, sel: 1, slot: 7 })
     const r = initialState()
-    expect(r).toMatchObject({ app: 'sec', colId: s.colId, step: 3, sel: 1, methodName: s.methodName })
+    expect(r).toMatchObject({ app: 'sec', colId: s.colId, step: 3, sel: 1, slot: 7, methodName: s.methodName })
     expect(r.phases).toEqual(s.phases)
   })
 

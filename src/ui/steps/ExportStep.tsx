@@ -1,6 +1,8 @@
 import { breakpoints } from '../../domain/calc'
 import { currentColumn, type Action, type State } from '../../state/store'
-import { downloadTxt, methodTxt, txtFileName } from '../exportTxt'
+import { MAX_SLOT } from '../../domain/primeview'
+import { NumberInput } from '../form/NumberInput'
+import { downloadTxt, exportBlocker, methodTxt, txtFileName } from '../exportTxt'
 import { fixed } from '../format'
 import { phaseColor } from '../phaseColors'
 import { StepHeader } from '../StepHeader'
@@ -8,17 +10,27 @@ import { StepHeader } from '../StepHeader'
 export function ExportStep({ state, dispatch }: { state: State; dispatch: (a: Action) => void }) {
   const column = currentColumn(state)
   const rows = breakpoints(state.phases, column)
+  const blocker = exportBlocker(state)
 
   return (
     <>
-      <StepHeader title="Export for PrimeView" description="ÄKTA prime method dump with the breakpoint table, ready to load with PrimeView.">
+      <StepHeader title="Export for PrimeView" description="ÄKTA prime method file for PrimeView. Save it to C:\UNICORN\Bin\Prime\.">
         <button type="button" className="btn btn-lg" onClick={() => dispatch({ type: 'setStep', step: 3 })}>
           Back
         </button>
-        <button type="button" className="btn btn-primary btn-lg" onClick={() => downloadTxt(state)}>
+        <label className="slot-field">
+          Method no.
+          <NumberInput className="slot-input" min="1" max={MAX_SLOT} step="1" value={state.slot} onValue={(slot) => dispatch({ type: 'setSlot', slot })} />
+        </label>
+        <button type="button" className="btn btn-primary btn-lg" disabled={!!blocker} title={blocker ?? undefined} onClick={() => downloadTxt(state)}>
           Download {txtFileName(state)}
         </button>
       </StepHeader>
+      {blocker && (
+        <div className="warning" role="alert">
+          {blocker}
+        </div>
+      )}
       <div className="export-grid">
         <div className="card bp-table" role="table" aria-label="Breakpoints">
           <div className="bp-grid bp-head label-caps" role="row">
@@ -37,7 +49,7 @@ export function ExportStep({ state, dispatch }: { state: State; dispatch: (a: Ac
                 {i + 1}
               </div>
               <div role="cell" className="num">{fixed(r.volume)}</div>
-              <div role="cell" className="num">{fixed(r.conc)}</div>
+              <div role="cell" className="num">{r.conc}</div>
               <div role="cell" className="num">{fixed(r.flow)}</div>
               <div role="cell" className="num">{fixed(r.frac)}</div>
               <div role="cell" className="num">A{r.inlet}</div>

@@ -3,7 +3,8 @@ import { resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { breakpoints } from '../src/domain/calc'
 import { SEED_COLUMNS } from '../src/domain/columns'
-import { fromPrimeViewTxt, maxPressureKpa, toPrimeViewTxt } from '../src/domain/primeview'
+import { fromPrimeViewTxt, maxPressureKpa, primeFileName, slotFromFileName, toPrimeViewTxt } from '../src/domain/primeview'
+import { validateProgram } from '../src/domain/validate'
 import { APPLICATIONS, templateFor } from '../src/domain/templates'
 import type { Column, Phase } from '../src/domain/types'
 
@@ -27,10 +28,33 @@ describe('export', () => {
     expect(toPrimeViewTxt(samplePhases, lowPressureColumn)).toBe(golden('sample-imac-gradient.txt'))
   })
 
-  test('uses CRLF, no tabs', () => {
+  test('ASCII, CRLF on every line, starts with an empty line, no tabs', () => {
     const txt = toPrimeViewTxt(samplePhases, lowPressureColumn)
     expect(txt).not.toContain('\t')
-    expect(txt.split('\r\n').every((l) => !l.includes('\n'))).toBe(true)
+    expect(txt.startsWith('\r\n*****')).toBe(true)
+    expect(txt.endsWith('\r\n')).toBe(true)
+    expect(txt.replace(/\r\n/g, '')).not.toMatch(/[\r\n]/)
+    expect([...txt].every((ch) => ch.charCodeAt(0) < 128)).toBe(true)
+  })
+
+  test('breakpoint rows are 62 characters and volumes strictly increase, for every template', () => {
+    for (const app of APPLICATIONS) {
+      for (const c of SEED_COLUMNS.filter((x) => app.id === 'equil' || x.apps.includes(app.id))) {
+        const rows = toPrimeViewTxt(templateFor(app.id, c), c).split('\r\n').filter((l) => l.startsWith(','))
+        expect(rows.every((l) => l.length === 62), `${app.id} / ${c.name}`).toBe(true)
+        const vols = rows.map((l) => Number(l.split(',')[2]))
+        expect(vols[0]).toBe(0)
+        expect(vols.every((v, i) => i === 0 || v > vols[i - 1]), `${app.id} / ${c.name}`).toBe(true)
+        expect(rows.map((l) => Number(l.split(',')[1]))).toEqual(rows.map((_, i) => i + 1))
+      }
+    }
+  })
+
+  test('file name is PrimeMeth_NNN.txt', () => {
+    expect(primeFileName(2)).toBe('PrimeMeth_002.txt')
+    expect(slotFromFileName('PrimeMeth_017.txt')).toBe(17)
+    expect(slotFromFileName('PrimeMeth_000.txt')).toBeNull()
+    expect(slotFromFileName('method.txt')).toBeNull()
   })
 
   test('max pressure is the column limit in kPa, capped at the system limit', () => {
@@ -45,9 +69,20 @@ describe('export', () => {
 })
 
 describe('breakpoints', () => {
-  test('a %B step adds an end breakpoint at the same volume', () => {
-    const bps = breakpoints([P({ len: 5, b0: 100, b1: 100 }), P({ len: 5 })], lowPressureColumn)
-    expect(bps.map((b) => [b.volume, b.conc])).toEqual([[0, 100], [5, 100], [5, 0], [10, 0]])
+  test('a %B step ends the phase at its volume and starts the next at +0.1 ml', () => {
+    const bps = breakpoints([P({ len: 5, b0: 100, b1: 100 }), P({ len: 5, inlet: 2 })], lowPressureColumn)
+    expect(bps.map((b) => [b.volume, b.conc, b.inlet])).toEqual([[0, 100, 1], [5, 100, 1], [5.1, 0, 2], [10, 0, 2]])
+  })
+
+  test('IMAC template: strip → re-equilibration step', () => {
+    const c = SEED_COLUMNS.find((x) => x.id === 'histrap-hp-5-ml') as Column
+    const bps = breakpoints(templateFor('imac', c), c)
+    expect(bps.map((b) => [b.volume, b.conc])).toEqual([[0, 0], [25, 0], [50, 0], [50.1, 5], [100, 5], [200, 100], [225, 100], [225.1, 0], [250, 0]])
+  })
+
+  test('phases too short for the file are errors', () => {
+    const issues = validateProgram([P({ len: 5, b0: 100, b1: 100 }), P({ len: 0.1 }), P({ len: 0.04 })], lowPressureColumn)
+    expect(issues.filter((i) => i.level === 'error').map((i) => i.phase)).toEqual([1, 2])
   })
 
   test('continuous %B needs no end breakpoint', () => {
@@ -64,6 +99,12 @@ describe('import', () => {
 
   test('accepts LF line endings', () => {
     expect(fromPrimeViewTxt(golden('sample-imac-gradient.txt').replace(/\r\n/g, '\n')).phases).toHaveLength(4)
+  })
+
+  test('folds %B step segments back into the following phase', () => {
+    const c = SEED_COLUMNS.find((x) => x.id === 'histrap-hp-5-ml') as Column
+    const { phases } = fromPrimeViewTxt(toPrimeViewTxt(templateFor('imac', c), c))
+    expect(phases.map((p) => [p.len, p.b0, p.b1])).toEqual([[25, 0, 0], [25, 0, 0], [50, 5, 5], [100, 5, 100], [25, 100, 100], [25, 0, 0]])
   })
 
   test('every template on every listed column survives export → import → export', () => {
@@ -84,6 +125,7 @@ describe('import', () => {
   test('rejects files it cannot read', () => {
     expect(() => fromPrimeViewTxt('hello')).toThrow('No breakpoint table')
     expect(() => fromPrimeViewTxt(golden('sample-imac-gradient.txt').replace('Method base        ,ml', 'Method base        ,min'))).toThrow('volume-based')
-    expect(() => fromPrimeViewTxt(golden('sample-imac-gradient.txt').replace(',17.0 ', ',1.0  '))).toThrow('must not decrease')
+    expect(() => fromPrimeViewTxt(golden('sample-imac-gradient.txt').replace(',17.0 ', ',2.0  '))).toThrow('must increase')
+    expect(() => fromPrimeViewTxt(golden('sample-imac-gradient.txt').replace(',1   ,0.0 ', ',1   ,0.5 '))).toThrow('0.0 ml')
   })
 })

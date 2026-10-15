@@ -1,9 +1,10 @@
 import { useCallback } from 'react'
 import type { Action, State } from '../state/store'
 import { MethodsPopover } from './MethodsPopover'
-import { downloadTxt } from './exportTxt'
+import { downloadTxt, exportBlocker } from './exportTxt'
 
 export function TopBar({ state, dispatch }: { state: State; dispatch: (a: Action) => void }) {
+  const blocker = exportBlocker(state)
   const close = useCallback(() => dispatch({ type: 'closeMethods' }), [dispatch])
   return (
     <header className="topbar">
@@ -33,7 +34,7 @@ export function TopBar({ state, dispatch }: { state: State; dispatch: (a: Action
         </button>
         {state.showMethods && <MethodsPopover state={state} dispatch={dispatch} onClose={close} />}
       </div>
-      <button type="button" className="btn btn-primary" onClick={() => downloadTxt(state)}>
+      <button type="button" className="btn btn-primary" disabled={!!blocker} title={blocker ?? undefined} onClick={() => downloadTxt(state)}>
         Export .txt
       </button>
     </header>

@@ -50,21 +50,33 @@ export function calcProgram(phases: readonly Phase[], column: Column): ProgramCa
   return { phases: out, total: v, time }
 }
 
+const round1 = (x: number) => Math.round(x * 10) / 10
+
+/** Volume offset of the start breakpoint after a %B step (two breakpoints at one volume don't work). */
+export const STEP_OFFSET = 0.1
+
+/** True when phase i starts with a %B step from phase i-1 (compared as exported: whole %B). */
+export function stepsBefore(calc: ProgramCalc, i: number): boolean {
+  return i > 0 && Math.round(calc.phases[i - 1].b1) !== Math.round(calc.phases[i].b0)
+}
+
 /**
- * ÄKTA prime breakpoints: each one sets flow, fractions and inlet from its volume on; %B is
- * interpolated linearly to the next breakpoint, and the method ends at the last one.
- * So: one breakpoint per phase start (autozero = phase setting), an end breakpoint only where
- * %B steps to the next phase (same volume as the next start), and a final end breakpoint.
+ * ÄKTA prime breakpoints, with the values as written to the file (volume, flow and fraction
+ * size to 0.1, whole %B). A breakpoint sets flow, fractions and inlet from its volume on; %B
+ * is interpolated linearly to the next breakpoint; the method ends at the last breakpoint.
+ * One breakpoint per phase start, an end breakpoint where %B steps to the next phase (the next
+ * start then follows at +0.1 ml, see docs/primeview-format.md), and a final end breakpoint.
  */
 export function breakpoints(phases: readonly Phase[], column: Column): Breakpoint[] {
   const calc = calcProgram(phases, column)
   return phases.flatMap((p, i) => {
     const c = calc.phases[i]
-    const base = { flow: p.flow, frac: p.frac, inlet: p.inlet, phase: i }
-    const start: Breakpoint = { ...base, volume: c.v0, conc: c.b0, az: p.az }
-    const next = calc.phases[i + 1]
-    if (next && next.b0 === c.b1) return [start]
-    return [start, { ...base, volume: c.v1, conc: c.b1, az: false }]
+    const base = { flow: round1(p.flow), frac: round1(p.frac), inlet: p.inlet, phase: i }
+    const v0 = round1(round1(c.v0) + (stepsBefore(calc, i) ? STEP_OFFSET : 0))
+    const start: Breakpoint = { ...base, volume: v0, conc: Math.round(c.b0), az: p.az }
+    const last = i === phases.length - 1
+    if (!last && !stepsBefore(calc, i + 1)) return [start]
+    return [start, { ...base, volume: round1(c.v1), conc: Math.round(c.b1), az: false }]
   })
 }
 

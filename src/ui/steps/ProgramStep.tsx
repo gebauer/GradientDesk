@@ -1,7 +1,7 @@
 import { calcProgram } from '../../domain/calc'
 import { APPLICATIONS, PHASE_TYPES } from '../../domain/templates'
 import type { Inlet, Phase, PhaseType } from '../../domain/types'
-import { validatePhase } from '../../domain/validate'
+import { validateProgram } from '../../domain/validate'
 import { currentColumn, type Action, type State } from '../../state/store'
 import { GradientChart } from '../chart/GradientChart'
 import { NumberInput } from '../form/NumberInput'
@@ -22,7 +22,7 @@ export function ProgramStep({ state, dispatch }: { state: State; dispatch: (a: A
   const pc = calc.phases[sel]
   const app = APPLICATIONS.find((a) => a.id === state.app)
   const upd = (patch: Partial<Phase>) => dispatch({ type: 'updatePhase', index: sel, patch })
-  const issues = validatePhase(p, sel, column)
+  const issues = validateProgram(state.phases, column).filter((i) => i.phase === sel)
   const issue = (field: string) => issues.find((i) => i.field === field)
   const id = (k: string) => `phase-${k}`
 
