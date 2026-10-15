@@ -74,35 +74,9 @@ tests/
 ## Hosting (Coolify)
 Static build served by nginx in a Docker image. In Coolify: New Resource → Public/GitHub repository → Build pack **Dockerfile** → port 80 → domain + auto HTTPS → enable auto-deploy on push to `main`.
 
-`Dockerfile`
-```dockerfile
-FROM node:24-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-
-FROM nginx:1.27-alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist /usr/share/nginx/html
-EXPOSE 80
-HEALTHCHECK CMD wget -qO- http://localhost/ >/dev/null || exit 1
-```
-
-`nginx.conf`
-```nginx
-server {
-  listen 80;
-  root /usr/share/nginx/html;
-  location / { try_files $uri /index.html; }
-  location /assets/ { add_header Cache-Control "public, max-age=31536000, immutable"; }
-  location = /index.html { add_header Cache-Control "no-cache"; }
-  add_header X-Content-Type-Options nosniff;
-  add_header Referrer-Policy no-referrer;
-  add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:";
-}
-```
+The deploy files live in the repo root: `Dockerfile`, `nginx.conf`, `security-headers.conf`. Notes:
+- nginx drops server-level `add_header` lines in any `location` that sets its own, so every location includes `security-headers.conf`.
+- nginx listens on IPv4 and IPv6, and the healthcheck uses `127.0.0.1` (busybox `wget localhost` goes to `::1`).
 Note: data lives in each user's browser (`localStorage`), so redeploys never touch user data. Keep the domain stable — a new origin means empty storage.
 
 ## Open points
