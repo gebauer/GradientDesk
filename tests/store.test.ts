@@ -51,6 +51,26 @@ describe('application and column', () => {
   })
 })
 
+describe('recent columns', () => {
+  test('choosing or opening counts, loading a template and the automatic fallback do not', () => {
+    let s = initialState()
+    expect(s.recentColumns).toEqual([])
+    s = run(s, { type: 'loadApp', app: 'sec' })
+    expect(s.recentColumns).toEqual([])
+    s = run(s, { type: 'selectColumn', id: 'superdex-75-10-300-gl' }, { type: 'selectColumn', id: 'histrap-hp-1-ml' })
+    expect(s.recentColumns).toEqual(['histrap-hp-1-ml', 'superdex-75-10-300-gl'])
+    s = run(s, { type: 'addCustomColumn', id: 'custom-1', name: 'Gravity 2 ml', cv: 2, flow: 4, p: 0.3 })
+    expect(s.recentColumns[0]).toBe('custom-1')
+    s = run(s, { type: 'removeCustomColumn', id: 'custom-1' })
+    expect(s.recentColumns).toEqual(['histrap-hp-1-ml', 'superdex-75-10-300-gl'])
+  })
+
+  test('survive a reload', () => {
+    storage.saveRecentColumns(['histrap-hp-1-ml'])
+    expect(initialState().recentColumns).toEqual(['histrap-hp-1-ml'])
+  })
+})
+
 describe('phases', () => {
   test('add inserts after the selection and selects it; delete keeps at least one', () => {
     let s = run(initialState(), { type: 'selectPhase', index: 0 }, { type: 'addPhase' })

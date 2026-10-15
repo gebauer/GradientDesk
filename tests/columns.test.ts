@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { columnsFor, columnsOfType, defaultColumnType, defaultRecFlow, filterColumns, searchColumns, SEED_COLUMNS, vendorCounts } from '../src/domain/columns'
+import { columnsFor, columnsOfType, defaultColumnType, defaultRecFlow, filterColumns, RECENT_LIMIT, searchColumns, SEED_COLUMNS, splitRecent, touchRecent, vendorCounts } from '../src/domain/columns'
 import type { ApplicationId, Column } from '../src/domain/types'
 
 const byName = (name: string): Column => {
@@ -111,5 +111,29 @@ describe('column filters', () => {
       { vendor: 'Thermo Fisher', count: 2 },
       { vendor: 'Custom', count: 1 },
     ])
+  })
+})
+
+describe('recent columns', () => {
+  const custom: Column = { id: 'my', name: 'My gravity column', manufacturer: '', cv: 2, flow: 4, rec: 2, p: 0.3, apps: [], custom: true }
+
+  test('touch moves to the front and keeps the newest few', () => {
+    expect(touchRecent(['a', 'b', 'c'], 'b')).toEqual(['b', 'a', 'c'])
+    expect(touchRecent(['a', 'b', 'c', 'd', 'e'], 'x')).toEqual(['x', 'a', 'b', 'c', 'd'])
+    expect(RECENT_LIMIT).toBe(5)
+  })
+
+  test('recent section: used columns newest first, then custom; no duplicates in the rest', () => {
+    const cols = [...SEED_COLUMNS, custom]
+    const { recent, rest } = splitRecent(cols, ['superdex-75-10-300-gl', 'histrap-hp-1-ml', 'gone'])
+    expect(recent.map((c) => c.id)).toEqual(['superdex-75-10-300-gl', 'histrap-hp-1-ml', 'my'])
+    expect(rest).toHaveLength(SEED_COLUMNS.length - 2)
+    expect(rest.some((c) => recent.includes(c))).toBe(false)
+    expect(rest[0].id).toBe('histrap-hp-5-ml')
+  })
+
+  test('filtered-out recent columns stay out', () => {
+    const imac = columnsOfType(SEED_COLUMNS, 'imac')
+    expect(splitRecent(imac, ['superdex-75-10-300-gl', 'histrap-hp-1-ml']).recent.map((c) => c.id)).toEqual(['histrap-hp-1-ml'])
   })
 })

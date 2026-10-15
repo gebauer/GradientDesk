@@ -1016,3 +1016,9 @@ select.input {
 .pill.on .pill-count {
   color: rgba(255, 255, 255, 0.7);
 }
+
+.col-section {
+  padding: 8px 16px;
+  background: var(--surface-footer);
+  border-bottom: 1px solid var(--border-row);
+}

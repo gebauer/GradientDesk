@@ -196,3 +196,24 @@ export function filterColumns(columns: readonly Column[], f: ColumnFilter): Colu
   const byVendor = columnsOfType(columns, f.type).filter((c) => f.vendor === null || vendorOf(c) === f.vendor)
   return searchColumns(byVendor, f.query)
 }
+
+/** How many recently used columns are kept. */
+export const RECENT_LIMIT = 5
+
+/** Moves a column to the front of the recent list. */
+export function touchRecent(recent: readonly string[], id: string): string[] {
+  return [id, ...recent.filter((x) => x !== id)].slice(0, RECENT_LIMIT)
+}
+
+/**
+ * Splits a (filtered) column list into the "Recent" section (recently used, newest first,
+ * then custom columns) and the rest, keeping the rest in library order.
+ */
+export function splitRecent(columns: readonly Column[], recent: readonly string[]): { recent: Column[]; rest: Column[] } {
+  const byId = new Map(columns.map((c) => [c.id, c]))
+  const used = recent.map((id) => byId.get(id)).filter((c): c is Column => c !== undefined)
+  const custom = columns.filter((c) => c.custom && !recent.includes(c.id))
+  const top = [...used, ...custom]
+  const ids = new Set(top.map((c) => c.id))
+  return { recent: top, rest: columns.filter((c) => !ids.has(c.id)) }
+}

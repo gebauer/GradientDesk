@@ -25,7 +25,7 @@ Vite + React 19 (latest stable) + TypeScript (strict). Node 24 LTS (`.nvmrc`). P
   - 0 ≤ %B ≤ 100
   - length > 0
   - inlet 1–8
-- `localStorage` keys: `gd.customColumns`, `gd.methods`, `gd.current`, `gd.author`. Version the stored JSON (`version: 1`) and write a migration when the shape changes. Never clear the user's storage.
+- `localStorage` keys: `gd.customColumns`, `gd.methods`, `gd.current`, `gd.author`, `gd.recentColumns`. Version the stored JSON (`version: 1`) and write a migration when the shape changes. Never clear the user's storage.
 - Use the colors, sizes and spacing exactly as listed under *Design Tokens* in `docs/SPEC.md`. Phase colors come from one map keyed by phase type.
 - Use tabular numbers for all numeric UI.
 - Accessibility:

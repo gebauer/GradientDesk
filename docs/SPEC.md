@@ -61,6 +61,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
   - Muted count "n of m columns" (m = all columns).
   - **Vendor pills** below: "All vendors" plus one pill per vendor that has columns of the chosen type, with its count, most columns first, "Custom" last. Single select; clicking the active pill returns to All vendors. Pill: 28 px high, radius 14, border `#cfcfcb`, 12 px; active = ink fill, white text.
   - Empty result: "No columns match “…”." or "No columns for this type and vendor."
+- **Recent section**: the filtered list is split into "Recent" (the last 5 columns the user chose, newest first, then all custom columns) and "All columns" (the rest, library order), each under an 11 px uppercase section row on `#fafaf9`. Without recent or custom columns there are no section rows. Choosing a column, adding a custom column and opening a method count as use; loading a template or the automatic fallback after removing a custom column don't. Stored per browser in `gd.recentColumns`.
 - Card "Add custom column", right label "Saved in this browser only". Grid `2fr 1fr 1fr 1fr auto`: Name, CV (ml), Max flow, Pressure (MPa), button "Add to library" (outline). Name, CV and flow are required. The new column is selected immediately.
 - Changing the column clamps each phase's flow to the column's maximum flow. Columns without a max flow (`flow: null`) don't clamp.
 
@@ -192,7 +193,7 @@ Values are unverified; check them against the vendor datasheets later. A custom 
 - `app`, `colId`, `phases[]`, `sel` (selected phase index), `step` (1–4), `methodName`
 - `customColumns[]`, `library[]` (saved methods), `showMethods`, `statusMsg`, `importError`
 - `dragDomain` (frozen x max during a drag)
-- Persistence in `localStorage`: `gd.customColumns`, `gd.methods`, `gd.current`, `gd.author`. There is no backend.
+- Persistence in `localStorage`: `gd.customColumns`, `gd.methods`, `gd.current`, `gd.author`, `gd.recentColumns`. There is no backend.
 
 ## Design Tokens
 - **Ink** `#1d1d1c` · **Secondary text** `#55554f` · **Muted** `#6b6b68` · **Chart flow line** `#8a8a86`

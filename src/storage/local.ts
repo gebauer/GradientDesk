@@ -2,7 +2,7 @@ import { fromJson, toMethodFile, type MethodFileV1 } from '../domain/methodJson'
 import type { Column, Method } from '../domain/types'
 
 /** localStorage keys (docs/SPEC.md). Values are wrapped as { version, ... } for migrations. */
-export const KEYS = { customColumns: 'gd.customColumns', methods: 'gd.methods', current: 'gd.current', author: 'gd.author' } as const
+export const KEYS = { customColumns: 'gd.customColumns', methods: 'gd.methods', current: 'gd.current', author: 'gd.author', recentColumns: 'gd.recentColumns' } as const
 
 export interface CurrentDoc {
   method: Method
@@ -94,4 +94,14 @@ export function loadAuthor(): string {
 
 export function saveAuthor(author: string): void {
   write(KEYS.author, author)
+}
+
+/** Recently used column ids, newest first; per browser. */
+export function loadRecentColumns(): string[] {
+  const data = read(KEYS.recentColumns)
+  return Array.isArray(data) ? data.filter((x): x is string => typeof x === 'string') : []
+}
+
+export function saveRecentColumns(ids: readonly string[]): void {
+  write(KEYS.recentColumns, ids)
 }

@@ -1,6 +1,6 @@
 import { useEffect, useReducer } from 'react'
 import { clampFlows, convertLength } from '../domain/calc'
-import { columnsFor, customRecFlow, SEED_COLUMNS } from '../domain/columns'
+import { columnsFor, customRecFlow, SEED_COLUMNS, touchRecent } from '../domain/columns'
 import { resolveColumn } from '../domain/methodJson'
 import { MAX_SLOT } from '../domain/primeview'
 import { defaultMethodName, defaultSelection, newPhaseAfter, templateFor } from '../domain/templates'
@@ -26,6 +26,8 @@ export interface State {
   slot: number
   /** "Created by" in exported files; saved per browser. */
   author: string
+  /** Recently used column ids, newest first. */
+  recentColumns: string[]
   customColumns: Column[]
   library: Method[]
   showMethods: boolean
@@ -91,7 +93,7 @@ export function reducer(s: State, a: Action): State {
     case 'selectColumn': {
       const col = allColumns(s).find((c) => c.id === a.id)
       if (!col) return s
-      return { ...s, colId: col.id, phases: clampFlows(s.phases, col) }
+      return { ...s, colId: col.id, phases: clampFlows(s.phases, col), recentColumns: touchRecent(s.recentColumns, col.id) }
     }
     case 'addCustomColumn': {
       const col: Column = { id: a.id, name: a.name, manufacturer: '', cv: a.cv, flow: a.flow, rec: customRecFlow(a.flow), p: a.p, apps: [], custom: true }
@@ -100,10 +102,11 @@ export function reducer(s: State, a: Action): State {
     }
     case 'removeCustomColumn': {
       const customColumns = s.customColumns.filter((c) => c.id !== a.id)
-      const next = { ...s, customColumns }
+      const next = { ...s, customColumns, recentColumns: s.recentColumns.filter((id) => id !== a.id) }
       if (s.colId !== a.id) return next
+      // Falling back is not a choice by the user, so it doesn't count as recently used.
       const fallback = columnsFor(s.app, allColumns(next))[0]
-      return reducer(next, { type: 'selectColumn', id: fallback.id })
+      return { ...reducer(next, { type: 'selectColumn', id: fallback.id }), recentColumns: next.recentColumns }
     }
     case 'selectPhase':
       return { ...s, sel: clampSel(a.index, s.phases) }
@@ -152,6 +155,7 @@ export function reducer(s: State, a: Action): State {
       return {
         ...s,
         customColumns,
+        recentColumns: touchRecent(s.recentColumns, resolved.column.id),
         app: a.method.application,
         colId: resolved.column.id,
         phases: a.method.phases,
@@ -185,6 +189,7 @@ export function initialState(): State {
     methodName: '',
     slot: 1,
     author: storage.loadAuthor(),
+    recentColumns: storage.loadRecentColumns(),
     customColumns,
     library,
     showMethods: false,
@@ -194,7 +199,9 @@ export function initialState(): State {
   const current = storage.loadCurrent()
   if (current) {
     const opened = reducer(base, { type: 'openMethod', method: current.method, message: '' })
-    if (opened.phases.length) return { ...opened, step: current.step, sel: clampSel(current.sel, opened.phases), slot: current.slot, status: null }
+    if (opened.phases.length) {
+      return { ...opened, step: current.step, sel: clampSel(current.sel, opened.phases), slot: current.slot, recentColumns: base.recentColumns, status: null }
+    }
   }
   return reducer({ ...base, colId: 'histrap-hp-5-ml' }, { type: 'loadApp', app: 'general' })
 }
@@ -206,6 +213,7 @@ export function useAppStore() {
   useEffect(() => storage.saveCustomColumns(state.customColumns), [state.customColumns])
   useEffect(() => storage.saveMethods(state.library), [state.library])
   useEffect(() => storage.saveAuthor(state.author), [state.author])
+  useEffect(() => storage.saveRecentColumns(state.recentColumns), [state.recentColumns])
   useEffect(() => {
     if (state.dragDomain !== null) return
     storage.saveCurrent({ method: currentMethod(state, new Date().toISOString()), step: state.step, sel: state.sel, slot: state.slot })

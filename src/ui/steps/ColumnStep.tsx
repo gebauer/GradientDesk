@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent } from 'react'
-import { COLUMN_TYPES, columnsOfType, defaultColumnType, filterColumns, vendorCounts, type ColumnType } from '../../domain/columns'
+import { COLUMN_TYPES, columnsOfType, defaultColumnType, filterColumns, splitRecent, vendorCounts, type ColumnType } from '../../domain/columns'
+import type { Column } from '../../domain/types'
 import { APPLICATIONS } from '../../domain/templates'
 import { allColumns, type Action, type State } from '../../state/store'
 import { fmt } from '../format'
@@ -18,6 +19,9 @@ export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Ac
   const vendor = vendors.some((v) => v.vendor === vendorPick) ? vendorPick : null
   const cols = filterColumns(all, { type, vendor, query })
   const filtered = cols.length !== all.length
+  const { recent, rest } = splitRecent(cols, state.recentColumns)
+  // Tab stop: the selected row, or the first row when the selection is filtered out.
+  const tabStop = cols.some((c) => c.id === state.colId) ? state.colId : (recent[0] ?? rest[0])?.id
   const [draft, setDraft] = useState(EMPTY)
   const set = (k: keyof typeof EMPTY) => (e: ChangeEvent<HTMLInputElement>) => setDraft((d) => ({ ...d, [k]: e.target.value }))
 
@@ -30,6 +34,63 @@ export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Ac
     if (!canAdd) return
     dispatch({ type: 'addCustomColumn', id: `custom-${Date.now()}`, name: draft.name.trim(), cv, flow, p: p > 0 ? p : 0.5 })
     setDraft(EMPTY)
+  }
+
+  const row = (c: Column) => {
+    const selected = c.id === state.colId
+    return (
+      <div
+        key={c.id}
+        className={`col-grid col-row row${selected ? ' selected' : ''}`}
+        role="radio"
+        aria-checked={selected}
+        tabIndex={c.id === tabStop ? 0 : -1}
+        onClick={() => dispatch({ type: 'selectColumn', id: c.id })}
+        onKeyDown={(e) => {
+          if (e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault()
+            dispatch({ type: 'selectColumn', id: c.id })
+          }
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault()
+            const radios = [...(e.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="radio"]') ?? [])]
+            const next = radios[radios.indexOf(e.currentTarget) + (e.key === 'ArrowDown' ? 1 : -1)]
+            if (next) {
+              next.focus()
+              next.click()
+            }
+          }
+        }}
+        title={c.note}
+      >
+        <div className="radio">{selected && <div className="radio-dot" />}</div>
+        <div>
+          <div className="col-name">{c.name}</div>
+          {c.manufacturer && <div className="col-maker">{c.manufacturer}</div>}
+        </div>
+        <div className="num">{fmt(c.cv)}</div>
+        <div className="num">{c.flow === null ? '–' : fmt(c.flow)}</div>
+        <div className="num">{fmt(c.p, 2)}</div>
+        <div className="col-tag">
+          {c.custom && (
+            <>
+              Custom
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label={`Remove ${c.name}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  dispatch({ type: 'removeCustomColumn', id: c.id })
+                }}
+              >
+                ×
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -97,61 +158,20 @@ export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Ac
           <div className="num">Pressure limit (MPa)</div>
           <div />
         </div>
-        {cols.map((c) => {
-          const selected = c.id === state.colId
-          return (
-            <div
-              key={c.id}
-              className={`col-grid col-row row${selected ? ' selected' : ''}`}
-              role="radio"
-              aria-checked={selected}
-              tabIndex={selected ? 0 : -1}
-              onClick={() => dispatch({ type: 'selectColumn', id: c.id })}
-              onKeyDown={(e) => {
-                if (e.key === ' ' || e.key === 'Enter') {
-                  e.preventDefault()
-                  dispatch({ type: 'selectColumn', id: c.id })
-                }
-                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                  e.preventDefault()
-                  const sib = e.key === 'ArrowDown' ? e.currentTarget.nextElementSibling : e.currentTarget.previousElementSibling
-                  if (sib instanceof HTMLElement && sib.getAttribute('role') === 'radio') {
-                    sib.focus()
-                    sib.click()
-                  }
-                }
-              }}
-              title={c.note}
-            >
-              <div className="radio">{selected && <div className="radio-dot" />}</div>
-              <div>
-                <div className="col-name">{c.name}</div>
-                {c.manufacturer && <div className="col-maker">{c.manufacturer}</div>}
-              </div>
-              <div className="num">{fmt(c.cv)}</div>
-              <div className="num">{c.flow === null ? '–' : fmt(c.flow)}</div>
-              <div className="num">{fmt(c.p, 2)}</div>
-              <div className="col-tag">
-                {c.custom && (
-                  <>
-                    Custom
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      aria-label={`Remove ${c.name}`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        dispatch({ type: 'removeCustomColumn', id: c.id })
-                      }}
-                    >
-                      ×
-                    </button>
-                  </>
-                )}
-              </div>
+        {recent.length > 0 && (
+          <>
+            <div className="col-section label-caps" role="presentation">
+              Recent
             </div>
-          )
-        })}
+            {recent.map(row)}
+            {rest.length > 0 && (
+              <div className="col-section label-caps" role="presentation">
+                All columns
+              </div>
+            )}
+          </>
+        )}
+        {rest.map(row)}
         {cols.length === 0 && <div className="col-empty">{query ? `No columns match “${query}”.` : 'No columns for this type and vendor.'}</div>}
       </div>
 

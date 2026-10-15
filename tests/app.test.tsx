@@ -106,3 +106,18 @@ test('column type is preset from the application and vendor pills filter', async
   await user.click(vendors.getByRole('button', { name: 'All vendors' }))
   expect(screen.getAllByRole('radio')).toHaveLength(101)
 })
+
+test('recently used columns appear in a Recent section at the top', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(screen.queryByText('Recent')).toBeNull()
+  await user.type(screen.getByRole('searchbox', { name: 'Search columns' }), 'superdex 200 increase')
+  await user.click(screen.getByRole('radio', { name: /Superdex 200 Increase/ }))
+  await user.clear(screen.getByRole('searchbox', { name: 'Search columns' }))
+  expect(screen.getByText('Recent')).toBeTruthy()
+  expect(screen.getByText('All columns')).toBeTruthy()
+  const radios = screen.getAllByRole('radio')
+  expect(radios[0].textContent).toContain('Superdex 200 Increase 10/300 GL')
+  expect(radios).toHaveLength(101)
+})
