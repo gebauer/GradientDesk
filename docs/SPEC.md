@@ -81,6 +81,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
     - End %B (disabled when isocratic)
     - Gradient toggle: "Linear gradient" / "Isocratic"
     - Flow (ml/min). The border turns red when above the column max, and the warning "Above the column maximum of X ml/min." appears. No check when the column has no max flow.
+    - Warnings (export allowed): flow above column max; values the export rounds (%B to whole numbers, flow and fraction size to 0.1); a gradient over less than 10 ml ("Steep gradient … the 4 ml mixer smooths gradients shorter than 10 ml"). Errors (export blocked): length ≤ 0, %B outside 0–100, flow ≤ 0, negative fraction size, inlet outside A1–A8, phase shorter than 0.1 ml (0.2 ml when it starts with a %B step).
     - Fraction size (ml), where 0 means no fractions
     - Inlet A (A1–A8, A8 labelled "(sample)")
     - Autozero at start (On/Off toggle)
@@ -112,7 +113,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
 ## Calculations
 - Phase ml = length × column CV (unit CV) or length (unit ml).
 - Phase start volume = sum of previous phase volumes. Phase time = ml / flow. Total time = Σ.
-- Breakpoints follow ÄKTA prime semantics: a breakpoint sets flow, fraction size and inlet from its volume on; %B is interpolated linearly to the next breakpoint; the method ends at the last breakpoint. So: **one breakpoint per phase start** (v0, b0, Autozero = phase setting), an **end breakpoint** (v1, b1, Autozero = No) only where %B steps to the next phase (same volume as the next start), and a **final end breakpoint**. Each breakpoint carries its phase's flow, fraction size and inlet.
+- Breakpoints follow ÄKTA prime semantics: a breakpoint sets flow, fraction size and inlet from its volume on; %B is interpolated linearly to the next breakpoint; the method ends at the last breakpoint. So: **one breakpoint per phase start** (Autozero = phase setting) and a **final end breakpoint**. Where %B steps between phases, the phase gets an **end breakpoint** at its end volume (its end %B, Autozero = No) and the next phase's start breakpoint follows at **+0.1 ml** (two breakpoints at the same volume don't work on the instrument). Breakpoint values are the file values: volume, flow and fraction size rounded to 0.1, %B to whole numbers.
 
 ## Data model
 ```ts
@@ -135,16 +136,16 @@ interface Column { id:string; name:string; manufacturer:string; cv:number;
 ```
 On import, the column is matched by id, then by name. If neither matches and CV is given, the column is created as a custom column.
 
-**TXT export**: ÄKTA prime "Method Dump" (AKTAprime V2.02, dump format V1.00). Reference file: `tests/golden/sample-imac-gradient.txt` (byte-exact golden test). Code: `src/domain/primeview.ts`.
-- CRLF line endings, spaces only (no tabs). Trailing spaces in the header lines are part of the format.
-- Fixed header block, then *Method Settings*: `Method Type ,-`, `Method ,-`, `Method base ,ml`, `Frac base ,ml`, `Max pressure (kPa) ,{column limit in kPa, capped at 1000}`, `Alarm (min/ml) ,0.0` (keys padded to 19 characters).
-- *Method Breakpoints* table, columns `Brkp Volume Conc Flow Frac Buff Inj Peak Autozero Eventmark`, second header line `(mAu/min)` under Peak. Every field starts with a comma and is padded with spaces; field widths incl. comma: 5, 9, 5, 6, 7, 5, 7, 7, 9, then Eventmark unpadded.
-- Values: Volume, Flow, Frac with one decimal; Conc as a whole number; Buff = inlet A position 1–8; Inj always `Load`; Peak `0`; Autozero `Y`/`N`; Eventmark `N`.
-- Values are rounded on export (%B to whole numbers, flow and fraction size to 0.1); the phase form warns when a value would be rounded.
+**TXT export**: ÄKTA prime "Method Dump" (AKTAprime V2.02, dump format V1.00). Full format spec: `docs/primeview-format.md`. Byte-exact reference: `tests/golden/sample-imac-gradient.txt`. Code: `src/domain/primeview.ts`.
+- File name `PrimeMeth_NNN.txt` with the method number 1–99 (step 4 field "Method no.", default 1, stored with the current method). PrimeView reads them from `C:\UNICORN\Bin\Prime\`.
+- ASCII, CRLF on every line, starts with an empty line, spaces only. Rows are 62 characters.
+- `Max pressure (kPa)` = column pressure limit in kPa, capped at 1000. `Inj` always `Load`, `Peak` 0, `Eventmark` N.
+- Export (top bar and step 4) is disabled while the program has errors; the reason is shown. Warnings never block.
 
 **TXT import** (Methods popover accepts `.json` and `.txt`):
-- Only `Method base ml`. Find the header row starting with `Brkp`, map columns by name, read rows that start with a comma. Volumes must not decrease.
-- Each consecutive pair of breakpoints with Δvolume > 0 becomes one phase (length in ml, %B from the pair, settings from the first). Zero-length pairs (a %B step) are skipped.
+- Only `Method base ml`. Find the header row starting with `Brkp`, map columns by name, read rows that start with a comma. The first volume must be 0.0 and volumes must strictly increase.
+- Each consecutive pair of breakpoints becomes one phase (length in ml, %B from the pair, settings from the first). A 0.1 ml segment that only changes %B (same settings as the phase before, no autozero) is a %B step and is folded into the following phase.
+- A `PrimeMeth_NNN.txt` file name sets the method number.
 - Phase type is guessed: inlet 8 or Inj = Inject → sample; %B changes → elution; %B ≥ 99 → strip; first phase → equil; otherwise wash. Phase names are not in the file, so the type name is used.
 - The program replaces the current one; application and column stay, the method name becomes the file name. Inject positions, peak settings and event marks are dropped with a visible message.
 
