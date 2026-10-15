@@ -19,7 +19,7 @@ The file contains two layouts: **1a "Guided wizard"** (chosen, implement this on
 
 ### App shell
 - **Top bar**: height 52 px, background `#fff`, bottom border 1 px `#dcdcd8`, padding 0 20 px, flex row, gap 16 px, items centered.
-  - Logo mark: 12 × 12 px square `#1d1d1c`, radius 2 px, plus the label "GradientDesk" (14 px / 600).
+  - App icon (`public/favicon.svg`) at 22 × 22 px, plus the label "GradientDesk" (14 px / 600), gap 9 px.
   - Vertical divider: 1 × 22 px `#dcdcd8`.
   - Method name: an inline-editable input, 280 × 30 px, background `#f5f5f4`, transparent border, radius 4 px, 13 px.
   - Spacer (flex 1).
@@ -204,7 +204,7 @@ Values are unverified; check them against the vendor datasheets later. A custom 
 - **Shadow**: only the popover, `0 10px 28px rgba(0,0,0,.14)`
 
 ## Assets
-- `public/favicon.svg`: app icon (64 × 64, rounded ink square with a white %B gradient line over an orange elution peak). Used as the browser favicon.
+- `public/favicon.svg`: app icon (64 × 64, rounded ink square with a white %B gradient line over an orange elution peak). Used as the browser favicon and in the top bar (22 px).
 - No other images or icon fonts; glyphs (× ‹ › ▾ ← →) are plain text characters.
 
 ## Files

@@ -9,7 +9,7 @@ export function TopBar({ state, dispatch }: { state: State; dispatch: (a: Action
   return (
     <header className="topbar">
       <div className="brand">
-        <div className="brand-mark" />
+        <img className="brand-icon" src="/favicon.svg" width={22} height={22} alt="" />
         GradientDesk
       </div>
       <div className="divider-v" />
