@@ -97,6 +97,18 @@ describe('import', () => {
     expect(warnings).toEqual([])
   })
 
+  test('accepts unpadded fields and missing empty lines', () => {
+    const loose = golden('sample-imac-gradient.txt')
+      .split('\r\n')
+      .filter((l) => l.trim() !== '')
+      .map((l) => (l.startsWith(',') ? l.replace(/ +/g, '').replace(/,/g, ' , ') : l))
+      .join('\r\n')
+    expect(loose).toContain(' , 2 , 2.0 , 0 , 1.0 , 0.0 , 8 , Load , 0 , Y , N')
+    expect(fromPrimeViewTxt(loose).phases).toEqual(samplePhases)
+    const tight = golden('sample-imac-gradient.txt').replace(/^(,.*)$/gm, (l) => l.replace(/ +/g, ''))
+    expect(fromPrimeViewTxt(tight).phases).toEqual(samplePhases)
+  })
+
   test('accepts LF line endings', () => {
     expect(fromPrimeViewTxt(golden('sample-imac-gradient.txt').replace(/\r\n/g, '\n')).phases).toHaveLength(4)
   })

@@ -123,7 +123,7 @@ empty line and ends with CRLF after the last row.
 ## 9. Open points (not verified from the reference file)
 
 - Whether `Conc` changes linearly (gradient) or stepwise between breakpoints. AKTAprime convention suggests linear.
-- Whether PrimeView accepts unpadded or differently padded fields. Keep the fixed widths to be safe.
+- Resolved (owner): empty lines are not significant, and the spacing between the commas in breakpoint rows is free. GradientDesk still writes the canonical padded layout and reads any spacing.
 - Maximum number of breakpoints per method.
 
 ## 10. GradientDesk decisions
