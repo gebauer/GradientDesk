@@ -35,7 +35,7 @@ src/
       ExportStep.tsx  breakpoint table + txt preview
     chart/
       GradientChart.tsx   SVG: bands, %B line, flow line, fractions, handles
-      useHandleDrag.ts    pointer events, frozen x-domain during a drag
+      geometry.ts         scales, ticks, drag/keyboard patches (pure, tested)
     form/             Field, NumberInput, Toggle, Segmented, Select
   styles/tokens.css   CSS variables from SPEC.md "Design Tokens"
 tests/
