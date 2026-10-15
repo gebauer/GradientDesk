@@ -24,6 +24,8 @@ export interface State {
   methodName: string
   /** PrimeView method number 1–99 → PrimeMeth_NNN.txt */
   slot: number
+  /** "Created by" in exported files; saved per browser. */
+  author: string
   customColumns: Column[]
   library: Method[]
   showMethods: boolean
@@ -45,6 +47,7 @@ export type Action =
   | { type: 'setStep'; step: Step }
   | { type: 'setMethodName'; name: string }
   | { type: 'setSlot'; slot: number }
+  | { type: 'setAuthor'; author: string }
   | { type: 'dragStart'; index: number; domain: number }
   | { type: 'dragEnd' }
   | { type: 'save'; now: string }
@@ -126,6 +129,8 @@ export function reducer(s: State, a: Action): State {
       return { ...s, step: a.step }
     case 'setMethodName':
       return { ...s, methodName: a.name }
+    case 'setAuthor':
+      return { ...s, author: a.author }
     case 'setSlot':
       return { ...s, slot: Math.min(MAX_SLOT, Math.max(1, Math.round(a.slot) || 1)) }
     case 'dragStart':
@@ -179,6 +184,7 @@ export function initialState(): State {
     step: 1,
     methodName: '',
     slot: 1,
+    author: storage.loadAuthor(),
     customColumns,
     library,
     showMethods: false,
@@ -199,6 +205,7 @@ export function useAppStore() {
 
   useEffect(() => storage.saveCustomColumns(state.customColumns), [state.customColumns])
   useEffect(() => storage.saveMethods(state.library), [state.library])
+  useEffect(() => storage.saveAuthor(state.author), [state.author])
   useEffect(() => {
     if (state.dragDomain !== null) return
     storage.saveCurrent({ method: currentMethod(state, new Date().toISOString()), step: state.step, sel: state.sel, slot: state.slot })

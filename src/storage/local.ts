@@ -2,7 +2,7 @@ import { fromJson, toMethodFile, type MethodFileV1 } from '../domain/methodJson'
 import type { Column, Method } from '../domain/types'
 
 /** localStorage keys (docs/SPEC.md). Values are wrapped as { version, ... } for migrations. */
-export const KEYS = { customColumns: 'gd.customColumns', methods: 'gd.methods', current: 'gd.current' } as const
+export const KEYS = { customColumns: 'gd.customColumns', methods: 'gd.methods', current: 'gd.current', author: 'gd.author' } as const
 
 export interface CurrentDoc {
   method: Method
@@ -84,4 +84,14 @@ export function loadCurrent(): CurrentDoc | null {
 
 export function saveCurrent(doc: CurrentDoc): void {
   write(KEYS.current, { method: toMethodFile(doc.method), step: doc.step, sel: doc.sel, slot: doc.slot })
+}
+
+/** The user's name for the "Created by" line in exported files; per browser. */
+export function loadAuthor(): string {
+  const data = read(KEYS.author)
+  return typeof data === 'string' ? data : ''
+}
+
+export function saveAuthor(author: string): void {
+  write(KEYS.author, author)
 }

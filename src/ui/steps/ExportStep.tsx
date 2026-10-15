@@ -18,14 +18,27 @@ export function ExportStep({ state, dispatch }: { state: State; dispatch: (a: Ac
         <button type="button" className="btn btn-lg" onClick={() => dispatch({ type: 'setStep', step: 3 })}>
           Back
         </button>
-        <label className="slot-field">
-          Method no.
-          <NumberInput className="slot-input" min="1" max={MAX_SLOT} step="1" value={state.slot} onValue={(slot) => dispatch({ type: 'setSlot', slot })} />
-        </label>
         <button type="button" className="btn btn-primary btn-lg" disabled={!!blocker} title={blocker ?? undefined} onClick={() => downloadTxt(state)}>
           Download {txtFileName(state)}
         </button>
       </StepHeader>
+      <div className="export-fields">
+        <label className="slot-field">
+          Method no.
+          <NumberInput className="slot-input" min="1" max={MAX_SLOT} step="1" value={state.slot} onValue={(slot) => dispatch({ type: 'setSlot', slot })} />
+        </label>
+        <label className="slot-field">
+          Created by
+          <input
+            className="input author-input"
+            value={state.author}
+            placeholder="Your name (optional)"
+            autoComplete="name"
+            onChange={(e) => dispatch({ type: 'setAuthor', author: e.target.value })}
+          />
+        </label>
+        <span className="muted">Written into the file header, saved in this browser.</span>
+      </div>
       {blocker && (
         <div className="warning" role="alert">
           {blocker}

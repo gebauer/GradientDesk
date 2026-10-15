@@ -955,3 +955,16 @@ select.input {
   stroke: var(--ink);
   stroke-opacity: 0.12;
 }
+
+.export-fields {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: none;
+  font-size: 12px;
+}
+
+.author-input {
+  width: 240px;
+  height: 34px;
+}

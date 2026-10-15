@@ -143,4 +143,10 @@ Readers don't depend on any of the layout details above, only on the line types 
 - Volumes are rounded to 0.1 ml at phase boundaries. Each phase must be at least 0.1 ml after rounding, and at least 0.2 ml when it starts with a %B step.
 - On import, a 0.1 ml segment that only changes %B (same flow, fraction size and inlet as the phase before, no autozero, no injection) is folded into the following phase, so export → import → export is byte-identical.
 - `Max pressure (kPa)` is written as the column's pressure limit in kPa, capped at 1000 (pending owner confirmation; the default in PrimeView files is 100).
+- Credit lines: GradientDesk adds two comment lines inside the header block, before the closing `**` line:
+  ```
+  ** Created with     , GradientDesk v<version> (github.com/gebauer/GradientDesk)
+  ** Created by       , <name>
+  ```
+  The name comes from the "Created by" field (per browser, may be empty: the line then ends with the comma, as a spot to fill in by hand). Both are converted to ASCII (ä → ae, ß → ss, accents dropped, anything else → `?`). Comment lines are ignored by readers, so they don't affect import. Reference: `tests/golden/gradientdesk-imac-gradient.txt`; without these lines the output equals the PrimeView sample byte for byte.
 - `Inj` is always written as `Load`; `Peak` 0; `Eventmark` N. On import, `Inject`, peak thresholds and event marks are dropped with a message.

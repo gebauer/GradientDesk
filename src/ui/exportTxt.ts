@@ -5,7 +5,7 @@ import { downloadText } from './download'
 
 export const txtFileName = (s: State) => primeFileName(s.slot)
 
-export const methodTxt = (s: State) => toPrimeViewTxt(s.phases, currentColumn(s))
+export const methodTxt = (s: State) => toPrimeViewTxt(s.phases, currentColumn(s), { version: __APP_VERSION__, author: s.author })
 
 /** Why the .txt can't be exported, or null. Warnings never block. */
 export function exportBlocker(s: State): string | null {

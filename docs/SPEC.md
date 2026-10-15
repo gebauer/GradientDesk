@@ -140,6 +140,7 @@ interface Column { id:string; name:string; manufacturer:string; cv:number;
 On import, the column is matched by id, then by name. If neither matches and CV is given, the column is created as a custom column.
 
 **TXT export**: ÄKTA prime "Method Dump" (AKTAprime V2.02, dump format V1.00). Full format spec: `docs/primeview-format.md`. Byte-exact reference: `tests/golden/sample-imac-gradient.txt`. Code: `src/domain/primeview.ts`.
+- Header credit: `** Created with , GradientDesk v{version} (github.com/gebauer/GradientDesk)` and `** Created by , {name}` (see `docs/primeview-format.md` §10). Step 4 has a row under the header: "Method no." (64 px number input), "Created by" (240 px text input, placeholder "Your name (optional)"), and the muted note "Written into the file header, saved in this browser."
 - File name `PrimeMeth_NNN.txt` with the method number 1–99 (step 4 field "Method no.", default 1, stored with the current method). PrimeView reads them from `C:\UNICORN\Bin\Prime\`.
 - ASCII, CRLF on every line, starts with an empty line, spaces only. Rows are 62 characters.
 - `Max pressure (kPa)` = column pressure limit in kPa, capped at 1000. `Inj` always `Load`, `Peak` 0, `Eventmark` N.
@@ -187,7 +188,7 @@ Values are unverified; check them against the vendor datasheets later. A custom 
 - `app`, `colId`, `phases[]`, `sel` (selected phase index), `step` (1–4), `methodName`
 - `customColumns[]`, `library[]` (saved methods), `showMethods`, `statusMsg`, `importError`
 - `dragDomain` (frozen x max during a drag)
-- Persistence in `localStorage`: `gd.customColumns`, `gd.methods`, `gd.current`. There is no backend.
+- Persistence in `localStorage`: `gd.customColumns`, `gd.methods`, `gd.current`, `gd.author`. There is no backend.
 
 ## Design Tokens
 - **Ink** `#1d1d1c` · **Secondary text** `#55554f` · **Muted** `#6b6b68` · **Chart flow line** `#8a8a86`

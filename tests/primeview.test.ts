@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { breakpoints } from '../src/domain/calc'
 import { columnsFor, SEED_COLUMNS } from '../src/domain/columns'
-import { fromPrimeViewTxt, maxPressureKpa, primeFileName, slotFromFileName, toPrimeViewTxt } from '../src/domain/primeview'
+import { fromPrimeViewTxt, maxPressureKpa, primeFileName, slotFromFileName, toAscii, toPrimeViewTxt } from '../src/domain/primeview'
 import { validateProgram } from '../src/domain/validate'
 import { APPLICATIONS, templateFor } from '../src/domain/templates'
 import type { Column, Phase } from '../src/domain/types'
@@ -24,8 +24,34 @@ const samplePhases: Phase[] = [
 const lowPressureColumn: Column = { id: 'x', name: 'X', manufacturer: '', cv: 1, flow: 4, rec: 1, p: 0.1, apps: [] }
 
 describe('export', () => {
-  test('matches the PrimeView sample byte for byte', () => {
-    expect(toPrimeViewTxt(samplePhases, lowPressureColumn)).toBe(golden('sample-imac-gradient.txt'))
+  const info = { version: '0.1.0', author: 'Jan Gebauer' }
+  const withoutCredit = (txt: string) => txt.replace(/\*\* Created with[^\r]*\r\n\*\* Created by[^\r]*\r\n\*\*\r\n/, '')
+
+  test('matches the PrimeView sample byte for byte, apart from the credit lines', () => {
+    expect(withoutCredit(toPrimeViewTxt(samplePhases, lowPressureColumn, info))).toBe(golden('sample-imac-gradient.txt'))
+  })
+
+  test('matches the GradientDesk reference file byte for byte', () => {
+    expect(toPrimeViewTxt(samplePhases, lowPressureColumn, info)).toBe(golden('gradientdesk-imac-gradient.txt'))
+  })
+
+  test('credit lines: version, project, author; empty author keeps the spot', () => {
+    const lines = toPrimeViewTxt(samplePhases, lowPressureColumn, info).split('\r\n')
+    expect(lines).toContain('** Created with     , GradientDesk v0.1.0 (github.com/gebauer/GradientDesk)')
+    expect(lines).toContain('** Created by       , Jan Gebauer')
+    expect(toPrimeViewTxt(samplePhases, lowPressureColumn, { ...info, author: '' }).split('\r\n')).toContain('** Created by       ,')
+  })
+
+  test('names are written as ASCII', () => {
+    expect(toAscii('Jürgen Müßig')).toBe('Juergen Muessig')
+    expect(toAscii('José Ångström')).toBe('Jose Angstroem')
+    expect(toAscii(' Li\nWei 李 ')).toBe('Li Wei ?')
+    const txt = toPrimeViewTxt(samplePhases, lowPressureColumn, { ...info, author: 'Zoë 李' })
+    expect([...txt].every((ch) => ch.charCodeAt(0) < 128)).toBe(true)
+  })
+
+  test('the credit lines don\'t change what is imported', () => {
+    expect(fromPrimeViewTxt(toPrimeViewTxt(samplePhases, lowPressureColumn, info)).phases).toEqual(samplePhases)
   })
 
   test('ASCII, CRLF on every line, starts with an empty line, no tabs', () => {

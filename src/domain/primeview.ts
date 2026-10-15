@@ -12,19 +12,47 @@ import type { Column, Inlet, Phase, PhaseType } from './types'
 
 const CRLF = '\r\n'
 
-const HEADER = [
-  '',
-  '*****************************************************************',
-  '** Method Dump',
-  '**',
-  '** AKTAprime   Ver  , V2.02               ',
-  '**',
-  '** Dump Format Ver  , V1.00               ',
-  '**',
-  '*****************************************************************',
-  '',
-  '',
-]
+export const PROJECT_URL = 'github.com/gebauer/GradientDesk'
+
+export interface ExportInfo {
+  /** GradientDesk version, e.g. "0.1.0" */
+  version: string
+  /** Author name; empty keeps the line as a spot to fill in by hand. */
+  author: string
+}
+
+/** Comment lines (`**`) are ignored by PrimeView, so the credit lines live inside the comment header. */
+function header(info: ExportInfo): string[] {
+  return [
+    '',
+    '*****************************************************************',
+    '** Method Dump',
+    '**',
+    '** AKTAprime   Ver  , V2.02               ',
+    '**',
+    '** Dump Format Ver  , V1.00               ',
+    '**',
+    `** Created with     , GradientDesk v${toAscii(info.version)} (${PROJECT_URL})`,
+    `** Created by       , ${toAscii(info.author)}`.trimEnd(),
+    '**',
+    '*****************************************************************',
+    '',
+    '',
+  ]
+}
+
+const TRANSLIT: Record<string, string> = { ä: 'ae', ö: 'oe', ü: 'ue', Ä: 'Ae', Ö: 'Oe', Ü: 'Ue', ß: 'ss' }
+
+/** The file must be ASCII: transliterate German umlauts, drop other accents, replace the rest with "?". */
+export function toAscii(text: string): string {
+  return text
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/[äöüÄÖÜß]/g, (c) => TRANSLIT[c])
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\x20-\x7e]/g, '?')
+    .trim()
+}
 
 /** Field widths including the leading comma; the last field (Eventmark) is not padded. */
 const WIDTHS = [5, 9, 5, 6, 7, 5, 7, 7, 9]
@@ -55,10 +83,10 @@ export function maxPressureKpa(column: Column): number {
   return Math.round(Math.min(column.p, SYSTEM_MAX_PRESSURE) * 1000)
 }
 
-export function toPrimeViewTxt(phases: readonly Phase[], column: Column): string {
+export function toPrimeViewTxt(phases: readonly Phase[], column: Column, info: ExportInfo = { version: '0.0.0', author: '' }): string {
   const bps = breakpoints(phases, column)
   const lines = [
-    ...HEADER,
+    ...header(info),
     '******************',
     '** Method Settings',
     '******************',
