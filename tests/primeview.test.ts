@@ -37,7 +37,7 @@ describe('export', () => {
 
   test('credit lines: version, project, author; empty author keeps the spot', () => {
     const lines = toPrimeViewTxt(samplePhases, lowPressureColumn, info).split('\r\n')
-    expect(lines).toContain('** Created with     , GradientDesk v0.1.0 (github.com/gebauer/GradientDesk)')
+    expect(lines).toContain('** Created with     , GradientDesk v0.1.0 (gradientdesk.xcience.net, github.com/gebauer/GradientDesk)')
     expect(lines).toContain('** Created by       , Jan Gebauer')
     expect(toPrimeViewTxt(samplePhases, lowPressureColumn, { ...info, author: '' }).split('\r\n')).toContain('** Created by       ,')
   })

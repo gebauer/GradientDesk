@@ -12,7 +12,8 @@ import type { Column, Inlet, Phase, PhaseType } from './types'
 
 const CRLF = '\r\n'
 
-export const PROJECT_URL = 'github.com/gebauer/GradientDesk'
+export const APP_URL = 'gradientdesk.xcience.net'
+export const REPO_URL = 'github.com/gebauer/GradientDesk'
 
 export interface ExportInfo {
   /** GradientDesk version, e.g. "0.1.0" */
@@ -32,7 +33,7 @@ function header(info: ExportInfo): string[] {
     '**',
     '** Dump Format Ver  , V1.00               ',
     '**',
-    `** Created with     , GradientDesk v${toAscii(info.version)} (${PROJECT_URL})`,
+    `** Created with     , GradientDesk v${toAscii(info.version)} (${APP_URL}, ${REPO_URL})`,
     `** Created by       , ${toAscii(info.author)}`.trimEnd(),
     '**',
     '*****************************************************************',
