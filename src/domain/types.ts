@@ -22,8 +22,10 @@ export interface Phase {
   b0: number
   b1: number
   grad: boolean
-  /** ml/min */
+  /** ml/min; with flowStd, the method's standard flow (kept in sync). */
   flow: number
+  /** The phase runs at the method's standard flow and follows it when that changes. */
+  flowStd: boolean
   /** Fraction size in ml; 0 = no fractions. */
   frac: number
   inlet: Inlet
@@ -75,11 +77,15 @@ export interface Breakpoint {
 
 export interface Method {
   format: 'gradientdesk'
-  version: 2
+  version: 3
   name: string
   application: ApplicationId
   system: 'AKTAprime'
   column: Column
+  /** Standard flow in ml/min for this method; null = the column's recommended flow. */
+  stdFlow: number | null
+  /** Pressure limit in MPa for this method; null = the column's limit. */
+  pressure: number | null
   phases: Phase[]
   /** ISO timestamp */
   modified: string

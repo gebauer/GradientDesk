@@ -2,7 +2,9 @@ import { useState, type ChangeEvent } from 'react'
 import { COLUMN_TYPES, columnsOfType, customRecFlow, defaultColumnType, filterColumns, splitRecent, vendorCounts, type ColumnType } from '../../domain/columns'
 import type { Column } from '../../domain/types'
 import { APPLICATIONS } from '../../domain/templates'
-import { allColumns, type Action, type State } from '../../state/store'
+import { validateSettings } from '../../domain/validate'
+import { allColumns, currentColumn, type Action, type State } from '../../state/store'
+import { DefaultNumber } from '../form/DefaultNumber'
 import { fmt } from '../format'
 import { StepHeader } from '../StepHeader'
 
@@ -111,6 +113,8 @@ export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Ac
           Continue
         </button>
       </StepHeader>
+
+      <MethodSettings state={state} dispatch={dispatch} />
 
       <div className="col-filters">
         <div className="col-search">
@@ -235,5 +239,62 @@ export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Ac
         </div>
       </form>
     </>
+  )
+}
+
+/** Standard flow and pressure limit of this method: the column's values unless overridden. */
+function MethodSettings({ state, dispatch }: { state: State; dispatch: (a: Action) => void }) {
+  const column = currentColumn(state)
+  const issues = validateSettings({ stdFlow: state.stdFlow, pressure: state.pressure, column })
+  return (
+    <section className="card settings-card" aria-labelledby="settings-title">
+      <div className="custom-head">
+        <h2 id="settings-title" style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
+          Method settings · {column.name}
+        </h2>
+        <div className="muted" style={{ fontSize: 12 }}>
+          Column values unless you change them; reset when you pick another column
+        </div>
+      </div>
+      <div className="settings-grid">
+        <div className="field">
+          <label htmlFor="std-flow">Standard flow (ml/min)</label>
+          <DefaultNumber
+            id="std-flow"
+            value={state.stdFlow}
+            fallback={column.rec}
+            onChange={(value) => dispatch({ type: 'setStdFlow', value })}
+            checkLabel="Column value"
+            checkName="Standard flow: use the column's recommended flow"
+            invalid={issues.some((i) => i.field === 'stdFlow')}
+            describedBy={issues.length ? 'settings-issues' : undefined}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="pressure-limit">Pressure limit (MPa)</label>
+          <DefaultNumber
+            id="pressure-limit"
+            step="0.05"
+            value={state.pressure}
+            fallback={column.p}
+            onChange={(value) => dispatch({ type: 'setPressure', value })}
+            checkLabel="Column value"
+            checkName="Pressure limit: use the column's limit"
+            invalid={issues.some((i) => i.field === 'pressure')}
+            describedBy={issues.length ? 'settings-issues' : undefined}
+          />
+        </div>
+        <p className="muted settings-note">Phases with “Default” flow run at the standard flow. The pressure limit is written to the file as Max pressure.</p>
+      </div>
+      {issues.length > 0 && (
+        <div id="settings-issues" role="status">
+          {issues.map((i, k) => (
+            <div key={k} className="warning">
+              {i.message}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   )
 }

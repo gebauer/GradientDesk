@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'vitest'
-import { breakpoints, calcProgram, clampFlows, convertLength, expandPhases, maxB, phaseMl, updatePhaseLinked } from '../src/domain/calc'
-import { retypePatch } from '../src/domain/templates'
+import { applyStdFlow, breakpoints, calcProgram, clampFlows, convertLength, expandPhases, maxB, phaseMl, updatePhaseLinked } from '../src/domain/calc'
+import { retypePatch, templateFor } from '../src/domain/templates'
 import type { Column, Phase } from '../src/domain/types'
-import { validatePhase, validateProgram } from '../src/domain/validate'
+import { validatePhase, validateProgram, validateSettings } from '../src/domain/validate'
 
 const column: Column = { id: 'c', name: 'C', manufacturer: '', cv: 5, flow: 20, rec: 5, p: 0.5, apps: ['imac'] }
 const phase = (o: Partial<Phase> = {}): Phase => ({
-  name: 'P', type: 'wash', len: 2, unit: 'CV', b0: 0, b1: 0, grad: false, flow: 5, frac: 0, inlet: 1, inj: 'Load', az: false, ...o,
+  name: 'P', type: 'wash', len: 2, unit: 'CV', b0: 0, b1: 0, grad: false, flow: 5, flowStd: false, frac: 0, inlet: 1, inj: 'Load', az: false, ...o,
 })
 
 describe('volumes', () => {
@@ -168,5 +168,21 @@ describe('pump wash', () => {
     const w = { ...p, ...retypePatch(p, 'pumpwash') }
     expect(w).toMatchObject({ type: 'pumpwash', lines: ['B', 'A1'], len: 40, unit: 'ml', flow: 10, frac: 0, inj: 'Waste', az: false, b0: 5 })
     expect({ ...w, ...retypePatch(w, 'sample') }).toMatchObject({ type: 'sample', inj: 'Inject', lines: undefined })
+  })
+})
+
+describe('method settings', () => {
+  test('standard flow above the column max and pressure above the column or system limit warn', () => {
+    expect(validateSettings({ stdFlow: null, pressure: null, column })).toEqual([])
+    expect(validateSettings({ stdFlow: 25, pressure: 0.6, column }).map((i) => i.field)).toEqual(['stdFlow', 'pressure'])
+    expect(validateSettings({ stdFlow: null, pressure: 1.2, column: { ...column, p: 4 } }).map((i) => i.message)).toEqual([
+      'The ÄKTA prime allows at most 1 MPa; the export writes 1 MPa.',
+    ])
+  })
+
+  test('templates mark phases at the standard flow and derive slow loads from it', () => {
+    const ph = templateFor('imac', { ...column, rec: 5 }, 2)
+    expect(ph.map((p) => [p.flow, p.flowStd])).toEqual([[2, true], [1, false], [2, true], [2, true], [2, true], [2, true]])
+    expect(applyStdFlow(ph, 4).map((p) => p.flow)).toEqual([4, 1, 4, 4, 4, 4])
   })
 })

@@ -1,4 +1,5 @@
 import { calcProgram, expandPhases, phaseMl, stepsBefore } from './calc'
+import { SYSTEM_MAX_PRESSURE } from './columns'
 import type { Column, Phase } from './types'
 
 export type IssueField = 'len' | 'b0' | 'b1' | 'flow' | 'frac' | 'inlet' | 'lines'
@@ -86,4 +87,26 @@ export function validateProgram(phases: readonly Phase[], column: Column): Issue
     }
     return issues
   })
+}
+
+export interface SettingIssue {
+  field: 'stdFlow' | 'pressure'
+  level: 'warning'
+  message: string
+}
+
+/** Method standard flow and pressure limit against the column; warnings only (export stays allowed). */
+export function validateSettings(m: { stdFlow: number | null; pressure: number | null; column: Column }): SettingIssue[] {
+  const issues: SettingIssue[] = []
+  const c = m.column
+  if (m.stdFlow !== null && c.flow !== null && m.stdFlow > c.flow) {
+    issues.push({ field: 'stdFlow', level: 'warning', message: `Standard flow is above the column maximum of ${fmt(c.flow)} ml/min.` })
+  }
+  if (m.pressure !== null && m.pressure > c.p) {
+    issues.push({ field: 'pressure', level: 'warning', message: `Pressure limit is above the column limit of ${fmt(c.p)} MPa.` })
+  }
+  if (m.pressure !== null && m.pressure > SYSTEM_MAX_PRESSURE) {
+    issues.push({ field: 'pressure', level: 'warning', message: `The ÄKTA prime allows at most ${fmt(SYSTEM_MAX_PRESSURE)} MPa; the export writes ${fmt(SYSTEM_MAX_PRESSURE)} MPa.` })
+  }
+  return issues
 }

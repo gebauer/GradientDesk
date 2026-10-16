@@ -1,5 +1,5 @@
 import { useEffect, useReducer } from 'react'
-import { clampFlows, convertLength, updatePhaseLinked } from '../domain/calc'
+import { applyStdFlow, clampFlows, convertLength, stdFlowOf, updatePhaseLinked } from '../domain/calc'
 import { columnsFor, customRecFlow, SEED_COLUMNS, touchRecent } from '../domain/columns'
 import { resolveColumn } from '../domain/methodJson'
 import { MAX_SLOT } from '../domain/primeview'
@@ -18,6 +18,10 @@ export interface Status {
 export interface State {
   app: ApplicationId
   colId: string
+  /** Method standard flow (ml/min); null = the column's recommended flow. */
+  stdFlow: number | null
+  /** Method pressure limit (MPa); null = the column's limit. */
+  pressure: number | null
   phases: Phase[]
   sel: number
   step: Step
@@ -39,6 +43,9 @@ export interface State {
 export type Action =
   | { type: 'loadApp'; app: ApplicationId }
   | { type: 'selectColumn'; id: string }
+  /** null = back to the column's value. */
+  | { type: 'setStdFlow'; value: number | null }
+  | { type: 'setPressure'; value: number | null }
   | { type: 'addCustomColumn'; name: string; cv: number; flow: number; p: number; id: string; /** Default: 50 % of max flow. */ rec?: number }
   | { type: 'removeCustomColumn'; id: string }
   | { type: 'selectPhase'; index: number }
@@ -71,11 +78,13 @@ export function currentColumn(s: Pick<State, 'customColumns' | 'colId' | 'app'>)
 export function currentMethod(s: State, now: string): Method {
   return {
     format: 'gradientdesk',
-    version: 2,
+    version: 3,
     name: s.methodName,
     application: s.app,
     system: 'AKTAprime',
     column: currentColumn(s),
+    stdFlow: s.stdFlow,
+    pressure: s.pressure,
     phases: s.phases,
     modified: now,
   }
@@ -88,13 +97,28 @@ export function reducer(s: State, a: Action): State {
     case 'loadApp': {
       const list = columnsFor(a.app, allColumns(s))
       const col = list.find((c) => c.id === s.colId) ?? list[0]
-      const phases = templateFor(a.app, col)
-      return { ...s, app: a.app, colId: col.id, phases, sel: defaultSelection(phases), methodName: defaultMethodName(a.app, col) }
+      // The method's overrides belong to its column.
+      const keep = col.id === s.colId
+      const stdFlow = keep ? s.stdFlow : null
+      const pressure = keep ? s.pressure : null
+      const phases = templateFor(a.app, col, stdFlowOf({ stdFlow, column: col }))
+      return { ...s, app: a.app, colId: col.id, stdFlow, pressure, phases, sel: defaultSelection(phases), methodName: defaultMethodName(a.app, col) }
     }
     case 'selectColumn': {
       const col = allColumns(s).find((c) => c.id === a.id)
       if (!col) return s
-      return { ...s, colId: col.id, phases: clampFlows(s.phases, col), recentColumns: touchRecent(s.recentColumns, col.id) }
+      const recentColumns = touchRecent(s.recentColumns, col.id)
+      if (col.id === s.colId) return { ...s, recentColumns }
+      // A new column brings its own standard flow and pressure limit; overrides are reset.
+      const phases = clampFlows(applyStdFlow(s.phases, col.rec), col)
+      return { ...s, colId: col.id, stdFlow: null, pressure: null, phases, recentColumns }
+    }
+    case 'setStdFlow': {
+      const stdFlow = a.value !== null && a.value > 0 ? a.value : null
+      return { ...s, stdFlow, phases: applyStdFlow(s.phases, stdFlow ?? currentColumn(s).rec) }
+    }
+    case 'setPressure': {
+      return { ...s, pressure: a.value !== null && a.value > 0 ? a.value : null }
     }
     case 'addCustomColumn': {
       const col: Column = { id: a.id, name: a.name, manufacturer: '', cv: a.cv, flow: a.flow, rec: a.rec ?? customRecFlow(a.flow), p: a.p, apps: [], custom: true }
@@ -112,8 +136,11 @@ export function reducer(s: State, a: Action): State {
     }
     case 'selectPhase':
       return { ...s, sel: clampSel(a.index, s.phases) }
-    case 'updatePhase':
-      return { ...s, phases: updatePhaseLinked(s.phases, a.index, a.patch) }
+    case 'updatePhase': {
+      // Setting a flow makes it the phase's own value unless the patch says otherwise.
+      const patch = 'flow' in a.patch && !('flowStd' in a.patch) ? { ...a.patch, flowStd: false } : a.patch
+      return { ...s, phases: updatePhaseLinked(s.phases, a.index, patch) }
+    }
     case 'setUnit': {
       const p = s.phases[a.index]
       if (!p || p.unit === a.unit) return s
@@ -161,7 +188,10 @@ export function reducer(s: State, a: Action): State {
         recentColumns: touchRecent(s.recentColumns, resolved.column.id),
         app: a.method.application,
         colId: resolved.column.id,
-        phases: a.method.phases,
+        stdFlow: a.method.stdFlow,
+        pressure: a.method.pressure,
+        // Default-flow phases follow the standard flow as it is now (the library column may have changed).
+        phases: applyStdFlow(a.method.phases, stdFlowOf({ stdFlow: a.method.stdFlow, column: resolved.column })),
         sel: defaultSelection(a.method.phases),
         methodName: a.method.name,
         slot: a.slot ?? s.slot,
@@ -187,6 +217,8 @@ export function initialState(): State {
   const base: State = {
     app: 'general',
     colId: '',
+    stdFlow: null,
+    pressure: null,
     phases: [],
     sel: 0,
     step: 1,

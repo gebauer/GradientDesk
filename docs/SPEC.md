@@ -63,7 +63,8 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
   - Empty result: "No columns match “…”." or "No columns for this type and vendor."
 - **Recent section**: the filtered list is split into "Recent" (the last 5 columns the user chose, newest first, then all custom columns) and "All columns" (the rest, library order), each under an 11 px uppercase section row on `#fafaf9`. Without recent or custom columns there are no section rows. Choosing a column, adding a custom column and opening a method count as use; loading a template or the automatic fallback after removing a custom column don't. Stored per browser in `gd.recentColumns`. The section is computed when the step opens (custom columns live), so a row the user clicks stays where it is and moves to Recent on the next visit.
 - Card "Add custom column", right label "Saved in this browser only". Grid `2fr 1fr 1fr 1fr 1fr auto`: Name, CV (ml), Max flow, Rec. flow (optional, placeholder 50 % of the max flow, must be > 0 and ≤ max flow), Pressure (MPa), button "Add to library" (outline). Name, CV and flow are required. The new column is selected immediately.
-- Changing the column clamps each phase's flow to the column's maximum flow. Columns without a max flow (`flow: null`) don't clamp.
+- **Method settings card** (above the filters, same card style as "Add custom column"): title "Method settings · {column}", right muted "Column values unless you change them; reset when you pick another column". Grid `240px 240px 1fr`: "Standard flow (ml/min)" and "Pressure limit (MPa)", each a number input with a checkbox "Column value" to its right, and a muted note "Phases with “Default” flow run at the standard flow. The pressure limit is written to the file as Max pressure." Checked (the default), the input shows the column's recommended flow / pressure limit in grey (`--text-muted`) and follows the column; typing a value or unchecking makes it the method's own value. Warnings below (export allowed): standard flow above the column max flow; pressure limit above the column limit; above 1 MPa (the export writes 1 MPa).
+- Changing the column resets both overrides to the column values, sets every "Default" phase to the new column's recommended flow, then clamps each phase's flow to the column's maximum flow (not on Waste). Columns without a max flow (`flow: null`) don't clamp. Loading an application keeps the overrides when the column stays.
 
 ### Step 3 — Program (main screen)
 - Description: "{App} on {Column} · drag a handle to change length and %B, drag a flat line to move it up or down, right-click a phase for more".
@@ -88,7 +89,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
     - Start %B
     - End %B (disabled when isocratic)
     - Gradient toggle: "Linear gradient" / "Isocratic"
-    - Flow (ml/min). The border turns red when above the column max, and the warning "Above the column maximum of X ml/min." appears. No check when the column has no max flow or the injection valve is on Waste (the column is bypassed).
+    - Flow (ml/min), with a checkbox "Default" to the right of the input. Checked, the phase runs at the method's standard flow, shown in grey, and follows it when it changes; typing a value or unchecking makes it the phase's own flow. Template phases at the column's recommended flow, and phases added after or before one of them, start as Default. The border turns red when above the column max, and the warning "Above the column maximum of X ml/min." appears. No check when the column has no max flow or the injection valve is on Waste (the column is bypassed).
     - Changing the column doesn't clamp the flow of phases on Waste.
     - Warnings (export allowed): flow above column max; values the export rounds (%B to whole numbers, flow and fraction size to 0.1); a gradient over less than 10 ml ("Steep gradient … the 4 ml mixer smooths gradients shorter than 10 ml"). Errors (export blocked): length ≤ 0, %B outside 0–100, flow ≤ 0, negative fraction size, inlet outside A1–A8, phase shorter than 0.1 ml (0.2 ml when it starts with a %B step).
     - Fraction size (ml), where 0 means no fractions
@@ -97,6 +98,10 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
     - Autozero at start (On/Off toggle)
     - **Pump wash** phases show other fields after Name and Phase type: "Lines to wash · runs B, A8 … A1" (full width, one checkbox per line B, A1–A8, default B and A1; no line checked is an error "Select at least one line to wash."), "Volume per line (ml)" (default 40), Flow (ml/min, default 10) and the injection valve shown as Waste (not editable). Changing the type to Pump wash sets these defaults, fraction size 0 and Autozero off; %B is left as it is. The phase list meta reads "3 × 40 ml · B, A8, A1".
   - Footer: "Delete phase" (muted outline), spacer, "← Previous phase", "Next phase →" (primary).
+- **Program totals** card below the phases list and form, full width, padding 14 18 16. Title "Program totals" (11 px uppercase label). Grid `1fr 1fr 1.4fr`, gap 16 28, 13 px, labels muted, values right-aligned, tabular numbers. Recomputed on every change (drag, keyboard, form).
+  - Run: Total volume, Run time (h/min), Phases, Breakpoints.
+  - Fractions: Fractions (count; each fractionating phase counted separately, a partial last fraction counts), Collected (ml in fractionating phases), Fraction size (distinct sizes, e.g. "1, 2 ml"); "–" without fractions.
+  - Buffer use: one row per line the program pumps, in the order Inlet A1 … A8 ("Inlet A8 (sample)"), then Buffer B, and a bold "All lines" sum under a divider. A segment running from b0 to b1 %B takes its mean %B share from B and the rest from its inlet; pump wash lines count as well. Muted note: "Pumped by the program, rounded. Add volume for priming, tubing and the bottle dead volume."
 - Toggle buttons: active = ink fill with white text, inactive = white with ink text.
 
 ### Step 4 — Export for PrimeView
@@ -134,30 +139,31 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
 type PhaseType = 'equil'|'sample'|'wash'|'elution'|'strip'|'pumpwash';
 type InjectValve = 'Load'|'Inject'|'Waste';
 interface Phase { name:string; type:PhaseType; len:number; unit:'CV'|'ml';
-  b0:number; b1:number; grad:boolean; flow:number; frac:number; inlet:1..8; inj:InjectValve; az:boolean;
+  b0:number; b1:number; grad:boolean; flow:number; flowStd:boolean /*runs at the method's standard flow*/; frac:number; inlet:1..8; inj:InjectValve; az:boolean;
   lines?:('B'|'A1'|…|'A8')[] /*pump wash only, wash order B, A8 … A1*/ }
 type ApplicationId = 'imac'|'affinity'|'iex'|'hic'|'sec'|'equil';
 interface Column { id:string; name:string; manufacturer:string; cv:number;
   flow:number|null /*max ml/min; null = vendor gives no value*/; rec:number /*recommended flow*/; recEstimated?:boolean;
   p:number /*MPa, lower of packed bed and hardware limit*/; apps:ApplicationId[]; note?:string; custom?:boolean }
 ```
-**Method data** (version 2). Stored as JSON in `localStorage` (`gd.methods`, `gd.current`) and written as the method block of the `.txt` (below); there is no JSON file export or import:
+**Method data** (version 3; the method also holds `stdFlow` and `pressure`, null = the column's `rec` / `p`). Stored as JSON in `localStorage` (`gd.methods`, `gd.current`) and written as the method block of the `.txt` (below); there is no JSON file export or import:
 ```json
-{ "format":"gradientdesk", "version":2, "name":"IMAC_HisTrap5_gradient",
+{ "format":"gradientdesk", "version":3, "name":"IMAC_HisTrap5_gradient",
   "application":"imac", "system":"AKTAprime",
   "column":{"id":"histrap-hp-5-ml","name":"HisTrap HP 5 ml","manufacturer":"Cytiva","cv":5,"flow":20,"rec":5,"p":0.5,"apps":["imac"]},
+  "standardFlow":null, "pressureLimit":null,
   "phases":[{"name":"Equilibration","type":"equil","length":5,"unit":"CV","startB":0,"endB":0,
-    "gradient":false,"flow":5,"fraction":0,"inletA":1,"injection":"Load","autozero":true}],
+    "gradient":false,"flow":5,"flowDefault":true,"fraction":0,"inletA":1,"injection":"Load","autozero":true}],
   "modified":"2026-10-15T10:00:00.000Z" }
 ```
-Version 1 data has no `injection`; on load each phase gets its type's default. On import, the column is matched by id, then by name. If neither matches and CV is given, the column is created as a custom column.
+Migrations: version 1 has no `injection` (each phase gets its type's default); versions 1–2 have no `standardFlow`, `pressureLimit` (null) and `flowDefault` (true where the phase flow equals the column's `rec`). Opening a method sets its Default phases to its current standard flow. On import, the column is matched by id, then by name. If neither matches and CV is given, the column is created as a custom column.
 
 **TXT export**: ÄKTA prime "Method Dump" (AKTAprime V2.02, dump format V1.00). Full format spec: `docs/primeview-format.md`. Byte-exact reference: `tests/golden/sample-imac-gradient.txt`. Code: `src/domain/primeview.ts`.
 - Compact header (`docs/primeview-format.md` §10): the PrimeView header lines without spacer lines, then `** Created with , GradientDesk v{version} (gradientdesk.xcience.net)`, `** Source , github.com/gebauer/GradientDesk`, `** Created by , {name}` and the method block. No line over 96 characters (PrimeView rejects lines over 100). Step 4 has a row under the header: "Method no." (64 px number input), "Created by" (240 px text input, placeholder "Your name (optional)"), and the muted note "Written into the file header, saved in this browser."
 - File name `PrimeMeth_NNN.txt` with the method number 1–99 (step 4 field "Method no.", default 1, stored with the current method). PrimeView reads them from `C:\UNICORN\Bin\Prime\`.
 - ASCII, CRLF on every line, starts with an empty line, spaces only. Rows are 62 characters. Nothing follows the last breakpoint row.
 - **Method block**: in the comment header (comments are not allowed after the breakpoint table), the complete method in compact INI style (`docs/primeview-format.md` §11): banner `** GradientDesk method`, then `** [method]` (format, version, name, application), `** [column]` (all column fields) and `** [phase N]` per phase (the method data field names), entries `key=value` separated by `;`, wrapped onto `**   ` lines at 96 characters; long values continue as `key+=…`. Booleans `yes`/`no`, unknown max flow `none`, apps comma-separated; values are escaped to ASCII (`\uXXXX`, `\\`). No timestamp, so the same method always gives the same file. Byte-exact reference: `tests/golden/gradientdesk-imac-method.txt`.
-- `Max pressure (kPa)` = column pressure limit in kPa, capped at 1000. `Inj` = the phase's injection valve (`Load`, `Inject`, `Waste`), `Peak` 0, `Eventmark` N.
+- `Max pressure (kPa)` = the method's pressure limit (default the column's) in kPa, capped at 1000. `Inj` = the phase's injection valve (`Load`, `Inject`, `Waste`), `Peak` 0, `Eventmark` N.
 - Export (top bar and step 4) is disabled while the program has errors; the reason is shown. Warnings never block.
 
 **TXT import** (Methods popover):
@@ -169,7 +175,7 @@ Version 1 data has no `injection`; on load each phase gets its type's default. O
 - Without a method block: the program replaces the current one; application and column stay, the method name becomes the file name. Peak settings and event marks are dropped with a visible message.
 
 ## Application templates
-Lengths depend on the column (`rec` = recommended flow). Code: `src/domain/templates.ts`. Every phase uses `rec` unless stated; the injection valve is the phase type's default (sample phases Inject); elution fractions are 2 ml (1 ml for columns below 5 ml); `grad` is true when start %B ≠ end %B. After loading, the first elution phase is selected (otherwise the first phase). Default method name: `{short}_{column name without non-alphanumerics}`, e.g. `IMAC_HisTrapHP5ml`.
+Lengths depend on the column. `rec` below is the method's standard flow (default the column's recommended flow); phases at `rec` start as Default flow, and slow sample loads are derived from it. Code: `src/domain/templates.ts`. Every phase uses `rec` unless stated; the injection valve is the phase type's default (sample phases Inject); elution fractions are 2 ml (1 ml for columns below 5 ml); `grad` is true when start %B ≠ end %B. After loading, the first elution phase is selected (otherwise the first phase). Default method name: `{short}_{column name without non-alphanumerics}`, e.g. `IMAC_HisTrapHP5ml`.
 
 Application cards (name · short · description):
 - General · General · Any column. Equilibration, sample load, wash, linear gradient elution and re-equilibration as a starting point.

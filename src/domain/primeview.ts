@@ -255,6 +255,7 @@ export function fromPrimeViewTxt(text: string): PrimeViewImport {
       b1: b.conc,
       grad: a.conc !== b.conc,
       flow: a.flow,
+      flowStd: false,
       frac: a.frac,
       inlet: a.inlet,
       inj: a.inj,

@@ -1,10 +1,11 @@
 import { useCallback, useState, type MouseEvent as ReactMouseEvent } from 'react'
-import { calcProgram, sortLines } from '../../domain/calc'
+import { calcProgram, sortLines, stdFlowOf } from '../../domain/calc'
 import { APPLICATIONS, INJECT_VALVES, PHASE_TYPES, retypePatch } from '../../domain/templates'
 import type { Inlet, InjectValve, Phase, PhaseType, PumpLine } from '../../domain/types'
 import { validateProgram } from '../../domain/validate'
 import { currentColumn, type Action, type State } from '../../state/store'
 import { GradientChart } from '../chart/GradientChart'
+import { DefaultNumber } from '../form/DefaultNumber'
 import { NumberInput } from '../form/NumberInput'
 import { Segmented } from '../form/Segmented'
 import { Toggle } from '../form/Toggle'
@@ -12,6 +13,7 @@ import { fmt } from '../format'
 import { phaseColor } from '../phaseColors'
 import { menuAnchor, type MenuAnchor } from '../menuAnchor'
 import { PhaseMenu } from '../PhaseMenu'
+import { ProgramTotals } from '../ProgramTotals'
 import { StepHeader } from '../StepHeader'
 
 const INLETS: Inlet[] = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -33,6 +35,7 @@ export function ProgramStep({ state, dispatch }: { state: State; dispatch: (a: A
   const pc = calc.phases[sel]
   const app = APPLICATIONS.find((a) => a.id === state.app)
   const upd = (patch: Partial<Phase>) => dispatch({ type: 'updatePhase', index: sel, patch })
+  const std = stdFlowOf({ stdFlow: state.stdFlow, column })
   const issues = validateProgram(state.phases, column).filter((i) => i.phase === sel)
   const issue = (field: string) => issues.find((i) => i.field === field)
   const id = (k: string) => `phase-${k}`
@@ -195,14 +198,15 @@ export function ProgramStep({ state, dispatch }: { state: State; dispatch: (a: A
                 </div>
                 <div className="field">
                   <label htmlFor={id('flow')}>Flow (ml/min)</label>
-                  <NumberInput
+                  <DefaultNumber
                     id={id('flow')}
-                    step="0.5"
-                    min="0"
-                    value={p.flow}
-                    onValue={(flow) => upd({ flow })}
+                    value={p.flowStd ? null : p.flow}
+                    fallback={std}
+                    onChange={(flow) => upd(flow === null ? { flow: std, flowStd: true } : { flow, flowStd: false })}
+                    checkLabel="Default"
+                    checkName={`Flow: use the standard flow of ${fmt(std)} ml/min`}
                     invalid={!!issue('flow')}
-                    aria-describedby={issue('flow') ? id('issues') : undefined}
+                    describedBy={issue('flow') ? id('issues') : undefined}
                   />
                 </div>
                 <div className="field">
@@ -262,6 +266,8 @@ export function ProgramStep({ state, dispatch }: { state: State; dispatch: (a: A
           </div>
         </section>
       </div>
+
+      <ProgramTotals phases={state.phases} column={column} />
 
       {menu && state.phases[menu.index] && (
         <PhaseMenu

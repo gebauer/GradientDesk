@@ -14,11 +14,13 @@ const info = { version: '0.1.0', author: 'Jan Gebauer' }
 /** The file has no timestamp, so imported methods carry the epoch. */
 const method = (o: Partial<Method> = {}): Method => ({
   format: 'gradientdesk',
-  version: 2,
+  version: 3,
   name: 'IMAC_HisTrapHP5ml',
   application: 'imac',
   system: 'AKTAprime',
   column: histrap5,
+  stdFlow: null,
+  pressure: null,
   phases: templateFor('imac', histrap5),
   modified: new Date(0).toISOString(),
   ...o,

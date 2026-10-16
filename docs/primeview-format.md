@@ -143,7 +143,7 @@ Readers don't depend on any of the layout details above, only on the line types 
 - %B steps: a step from phase A to phase B is written as an end breakpoint of A at A's end volume (A's end %B, A's settings), followed by B's start breakpoint at **+0.1 ml** (B's %B and settings). Phase volumes don't shift; B just starts 0.1 ml later in the file.
 - Volumes are rounded to 0.1 ml at phase boundaries. Each phase must be at least 0.1 ml after rounding, and at least 0.2 ml when it starts with a %B step.
 - On import, a 0.1 ml segment that only changes %B (same flow, fraction size, inlet and injection valve as the phase before, no autozero) is folded into the following phase, so export → import → export is byte-identical.
-- `Max pressure (kPa)` is written as the column's pressure limit in kPa, capped at 1000 (pending owner confirmation; the default in PrimeView files is 100).
+- `Max pressure (kPa)` is written as the method's pressure limit (default the column's) in kPa, capped at 1000 (pending owner confirmation; the default in PrimeView files is 100).
 - Header: GradientDesk writes a compact header: the PrimeView header lines without the `**` spacer lines, then the credit lines and the method block (§11), all inside the one `*****` box:
   ```
   ** Method Dump
@@ -179,7 +179,7 @@ GradientDesk writes the complete method into the comment header, so a re-import 
 ```
 
 - The block starts at the line `** GradientDesk method` and ends at the header's closing `*****` line. Sections are `** [method]`, `** [column]`, `** [phase N]`, followed on the same line by entries `key=value`, separated by `;`. When a line would exceed 96 characters, the section continues on lines starting with `**   `. A value too long for one line is split: `key=<first part>` then `key+=<next part>` (appended on import). Entries are split at the first `=`; spaces around keys and values are not significant.
-- Keys are the method data field names (docs/SPEC.md "Method data"); pump wash phases add `lines` (comma-separated, wash order, e.g. `lines=B, A8, A1`); the column's `recEstimated`, `note` and `custom` are written only when set. Numbers as written by JavaScript (`String(n)`), booleans `yes` / `no`, unknown max flow `none`, `apps` comma-separated.
+- Keys are the method data field names (docs/SPEC.md "Method data"; `[method]` also has `standardFlow` and `pressureLimit`, `none` = the column's value; phases have `flowDefault`); pump wash phases add `lines` (comma-separated, wash order, e.g. `lines=B, A8, A1`); the column's `recEstimated`, `note` and `custom` are written only when set. Numbers as written by JavaScript (`String(n)`), booleans `yes` / `no`, unknown max flow `none`, `apps` comma-separated.
 - Values are ASCII: `\` is written as `\\`, `;` and any character outside 0x20–0x7E as `\uXXXX` (UTF-16 code unit), and leading or trailing spaces (of the value and of each split part) as `\u0020`. Parts are never split inside an escape.
 - No timestamp: the same method always gives the same file.
 - Import: the block is used only when the breakpoints it produces equal the file's rows (compared without spaces). Otherwise, or when the block can't be read, the table is imported (§10) with a message. A file without a block is imported from the table.

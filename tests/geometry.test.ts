@@ -3,7 +3,7 @@ import { dragPatch, geometry, keyPatch, levelPatch, tickStep } from '../src/ui/c
 import type { Phase } from '../src/domain/types'
 
 const phase = (o: Partial<Phase> = {}): Phase => ({
-  name: 'P', type: 'elution', len: 20, unit: 'CV', b0: 5, b1: 100, grad: true, flow: 5, frac: 2, inlet: 1, inj: 'Load', az: true, ...o,
+  name: 'P', type: 'elution', len: 20, unit: 'CV', b0: 5, b1: 100, grad: true, flow: 5, flowStd: false, frac: 2, inlet: 1, inj: 'Load', az: true, ...o,
 })
 
 test('geometry maps both ways and keeps a frozen domain', () => {

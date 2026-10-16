@@ -7,21 +7,22 @@
 ** Source           , github.com/gebauer/GradientDesk
 ** Created by       , Jan Gebauer
 ** GradientDesk method
-** [method] format=gradientdesk; version=2; name=IMAC_HisTrapHP5ml; application=imac
+** [method] format=gradientdesk; version=3; name=IMAC_HisTrapHP5ml; application=imac
+**   standardFlow=none; pressureLimit=none
 ** [column] id=histrap-hp-5-ml; name=HisTrap HP 5 ml; manufacturer=Cytiva; cv=5; flow=20; rec=5
 **   p=0.5; apps=imac
 ** [phase 1] name=Equilibration; type=equil; length=5; unit=CV; startB=0; endB=0; gradient=no
-**   flow=5; fraction=0; inletA=1; injection=Load; autozero=yes
+**   flow=5; flowDefault=yes; fraction=0; inletA=1; injection=Load; autozero=yes
 ** [phase 2] name=Sample load; type=sample; length=25; unit=ml; startB=0; endB=0; gradient=no
-**   flow=1; fraction=0; inletA=8; injection=Inject; autozero=no
+**   flow=1; flowDefault=no; fraction=0; inletA=8; injection=Inject; autozero=no
 ** [phase 3] name=Wash; type=wash; length=10; unit=CV; startB=5; endB=5; gradient=no; flow=5
-**   fraction=0; inletA=1; injection=Load; autozero=no
+**   flowDefault=yes; fraction=0; inletA=1; injection=Load; autozero=no
 ** [phase 4] name=Elution; type=elution; length=20; unit=CV; startB=5; endB=100; gradient=yes
-**   flow=5; fraction=2; inletA=1; injection=Load; autozero=yes
+**   flow=5; flowDefault=yes; fraction=2; inletA=1; injection=Load; autozero=yes
 ** [phase 5] name=Strip; type=strip; length=5; unit=CV; startB=100; endB=100; gradient=no
-**   flow=5; fraction=0; inletA=1; injection=Load; autozero=no
+**   flow=5; flowDefault=yes; fraction=0; inletA=1; injection=Load; autozero=no
 ** [phase 6] name=Re-equilibration; type=equil; length=5; unit=CV; startB=0; endB=0; gradient=no
-**   flow=5; fraction=0; inletA=1; injection=Load; autozero=no
+**   flow=5; flowDefault=yes; fraction=0; inletA=1; injection=Load; autozero=no
 *****************************************************************
 
 

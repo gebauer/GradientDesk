@@ -139,3 +139,37 @@ test('a pump wash phase picks its lines with checkboxes', async () => {
   expect((screen.getByLabelText('Volume per line (ml)') as HTMLInputElement).value).toBe('40')
   expect(screen.queryByLabelText('Start %B')).toBeNull()
 })
+
+test('a default flow follows the standard flow; typing a value makes it its own', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await user.click(within(screen.getByRole('navigation', { name: 'Steps' })).getByRole('button', { name: /Column/ }))
+  const std = screen.getByLabelText('Standard flow (ml/min)')
+  await user.clear(std)
+  await user.type(std, '3')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  const flow = screen.getByLabelText('Flow (ml/min)') as HTMLInputElement
+  const def = screen.getByRole('checkbox', { name: /Flow: use the standard flow of 3 ml\/min/ }) as HTMLInputElement
+  expect(def.checked).toBe(true)
+  expect(flow.value).toBe('3')
+  expect(flow.className).toContain('is-default')
+  await user.clear(flow)
+  await user.type(flow, '4')
+  expect(def.checked).toBe(false)
+  await user.click(def)
+  expect(flow.value).toBe('3')
+})
+
+test('program totals update when a phase changes', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await user.click(screen.getByRole('button', { name: /Program/ }))
+  const totals = within(screen.getByRole('region', { name: 'Program totals' }))
+  const fractions = () => totals.getByText('Fractions').nextElementSibling?.textContent
+  const before = fractions()
+  const frac = screen.getByLabelText('Fraction size (ml)')
+  await user.clear(frac)
+  await user.type(frac, '4')
+  expect(fractions()).not.toBe(before)
+  expect(totals.getByText('All lines')).toBeTruthy()
+})

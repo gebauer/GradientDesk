@@ -97,6 +97,32 @@ describe('phases', () => {
     expect(mid.phases[5].name).toBe('Elution')
   })
 
+  test('standard flow: default phases follow it, own values stay, null goes back to the column value', () => {
+    let s = run(initialState(), { type: 'loadApp', app: 'imac' })
+    const own = s.phases.findIndex((p) => !p.flowStd)
+    expect(s.phases[own].type).toBe('sample')
+    s = run(s, { type: 'setStdFlow', value: 3 })
+    expect(s.phases.filter((p) => p.flowStd).every((p) => p.flow === 3)).toBe(true)
+    expect(s.phases[own].flow).toBe(1)
+    s = run(s, { type: 'setStdFlow', value: null })
+    expect(s.stdFlow).toBeNull()
+    expect(s.phases.filter((p) => p.flowStd).every((p) => p.flow === currentColumn(s).rec)).toBe(true)
+  })
+
+  test('a new application on the same column keeps the overrides; another column resets them', () => {
+    let s = run(initialState(), { type: 'setStdFlow', value: 3 }, { type: 'setPressure', value: 0.3 }, { type: 'loadApp', app: 'imac' })
+    expect([s.stdFlow, s.pressure]).toEqual([3, 0.3])
+    expect(s.phases.filter((p) => p.flowStd).every((p) => p.flow === 3)).toBe(true)
+    s = run(s, { type: 'selectColumn', id: 'histrap-hp-1-ml' })
+    expect([s.stdFlow, s.pressure]).toEqual([null, null])
+    expect(s.phases.filter((p) => p.flowStd).every((p) => p.flow === 1)).toBe(true)
+  })
+
+  test('the export writes the method pressure limit as Max pressure', () => {
+    const s = run(initialState(), { type: 'setPressure', value: 0.3 })
+    expect(toMethodTxt(currentMethod(s, NOW))).toContain('Max pressure (kPa) ,300\r\n')
+  })
+
   test('switching the unit converts the length', () => {
     const s = run(initialState(), { type: 'setUnit', index: 0, unit: 'ml' })
     expect(s.phases[0]).toMatchObject({ unit: 'ml', len: 25 })

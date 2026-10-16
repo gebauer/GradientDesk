@@ -11,7 +11,7 @@ import type { Column, Phase } from '../src/domain/types'
 const golden = (name: string) => readFileSync(resolve(process.cwd(), 'tests/golden', name), 'utf8')
 
 const P = (o: Partial<Phase>): Phase => ({
-  name: 'P', type: 'wash', len: 1, unit: 'ml', b0: 0, b1: 0, grad: false, flow: 1, frac: 0, inlet: 1, inj: 'Load', az: false, ...o,
+  name: 'P', type: 'wash', len: 1, unit: 'ml', b0: 0, b1: 0, grad: false, flow: 1, flowStd: false, frac: 0, inlet: 1, inj: 'Load', az: false, ...o,
 })
 
 /** The method behind tests/golden/sample-imac-gradient.txt. */

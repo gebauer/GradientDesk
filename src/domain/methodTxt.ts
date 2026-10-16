@@ -1,5 +1,6 @@
 import { fromMethodFile, toMethodFile } from './methodJson'
 import { fromPrimeViewTxt, MAX_LINE, toPrimeViewTxt, type ExportInfo } from './primeview'
+import { pressureOf } from './calc'
 import type { Method, Phase } from './types'
 
 /**
@@ -10,7 +11,7 @@ import type { Method, Phase } from './types'
  */
 
 const MARKER = '** GradientDesk method'
-const BOOL_KEYS = new Set(['gradient', 'autozero', 'custom', 'recEstimated'])
+const BOOL_KEYS = new Set(['gradient', 'autozero', 'custom', 'recEstimated', 'flowDefault'])
 const LIST_KEYS = new Set(['apps', 'lines'])
 /** Prefix of a wrapped line. */
 const CONT = '**   '
@@ -84,7 +85,7 @@ export function methodBlock(m: Method): string[] {
   const c = f.column
   return [
     MARKER,
-    ...section('method', { format: f.format, version: f.version, name: f.name, application: f.application }),
+    ...section('method', { format: f.format, version: f.version, name: f.name, application: f.application, standardFlow: f.standardFlow, pressureLimit: f.pressureLimit }),
     ...section('column', {
       id: c.id,
       name: c.name,
@@ -104,13 +105,14 @@ export function methodBlock(m: Method): string[] {
 
 /** PrimeView dump with the method block in the header. */
 export function toMethodTxt(m: Method, info?: ExportInfo): string {
-  return toPrimeViewTxt(m.phases, m.column, info, methodBlock(m))
+  // Max pressure in the file is the method's pressure limit.
+  return toPrimeViewTxt(m.phases, { ...m.column, p: pressureOf(m) }, info, methodBlock(m))
 }
 
 function convert(section: string, key: string, raw: string): unknown {
   if (BOOL_KEYS.has(key)) return raw === 'yes'
   if (LIST_KEYS.has(key)) return raw.split(',').map((a) => unescapeValue(a.trim())).filter(Boolean)
-  if (section === 'column' && key === 'flow' && raw === 'none') return null
+  if (raw === 'none' && ((section === 'column' && key === 'flow') || key === 'standardFlow' || key === 'pressureLimit')) return null
   return unescapeValue(raw)
 }
 

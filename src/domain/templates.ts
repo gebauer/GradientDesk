@@ -48,7 +48,7 @@ export const PUMP_WASH_LINES: readonly PumpLine[] = ['B', 'A1']
 export function retypePatch(p: Phase, type: PhaseType): Partial<Phase> {
   const patch: Partial<Phase> = { type, inj: defaultInj(type) }
   if (type === 'pumpwash' && p.type !== 'pumpwash') {
-    return { ...patch, lines: [...PUMP_WASH_LINES], len: PUMP_WASH_ML, unit: 'ml', flow: PUMP_WASH_FLOW, frac: 0, az: false }
+    return { ...patch, lines: [...PUMP_WASH_LINES], len: PUMP_WASH_ML, unit: 'ml', flow: PUMP_WASH_FLOW, flowStd: false, frac: 0, az: false }
   }
   if (type !== 'pumpwash') return { ...patch, lines: undefined }
   return patch
@@ -65,7 +65,7 @@ const P = (
   frac: number,
   inlet: Inlet,
   az: boolean,
-): Phase => ({ name, type, len, unit, b0, b1, grad: b0 !== b1, flow, frac, inlet, inj: defaultInj(type), az })
+): Phase => ({ name, type, len, unit, b0, b1, grad: b0 !== b1, flow, flowStd: false, frac, inlet, inj: defaultInj(type), az })
 
 /** Fraction size for gradient/step elutions: 2 ml, or 1 ml for columns below 5 ml. */
 const elutionFrac = (c: Column) => (c.cv >= 5 ? 2 : 1)
@@ -129,8 +129,12 @@ const TEMPLATES: Record<ApplicationId, (c: Column) => Phase[]> = {
   ],
 }
 
-export function templateFor(app: ApplicationId, column: Column): Phase[] {
-  return TEMPLATES[app](column)
+/**
+ * Template program built around the standard flow (default: the column's recommended flow).
+ * Phases at the standard flow are marked `flowStd`; slower sample loads are derived from it.
+ */
+export function templateFor(app: ApplicationId, column: Column, stdFlow: number = column.rec): Phase[] {
+  return TEMPLATES[app]({ ...column, rec: stdFlow }).map((p) => (p.flow === stdFlow ? { ...p, flowStd: true } : p))
 }
 
 /** Phase selected after loading a template: the first elution, otherwise the first phase. */
@@ -145,10 +149,10 @@ export function defaultMethodName(app: ApplicationId, column: Column): string {
 
 /** Phase inserted by "Add phase after selected". */
 export function newPhaseAfter(selected: Phase): Phase {
-  return P('New phase', 'wash', 5, 'CV', selected.b1, selected.b1, selected.flow, 0, selected.inlet, false)
+  return { ...P('New phase', 'wash', 5, 'CV', selected.b1, selected.b1, selected.flow, 0, selected.inlet, false), flowStd: selected.flowStd }
 }
 
 /** Phase inserted by "Add phase before": runs at the selected phase's start %B, so no %B step appears. */
 export function newPhaseBefore(selected: Phase): Phase {
-  return P('New phase', 'wash', 5, 'CV', selected.b0, selected.b0, selected.flow, 0, selected.inlet, false)
+  return { ...P('New phase', 'wash', 5, 'CV', selected.b0, selected.b0, selected.flow, 0, selected.inlet, false), flowStd: selected.flowStd }
 }

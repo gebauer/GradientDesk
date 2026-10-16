@@ -114,6 +114,15 @@ export function maxB(phases: readonly Phase[]): number {
   return expandPhases(phases).reduce((m, { p }) => Math.max(m, p.b0, endB(p)), 0)
 }
 
+/** The method's standard flow and pressure limit: its override, otherwise the column's value. */
+export const stdFlowOf = (m: { stdFlow: number | null; column: Column }): number => m.stdFlow ?? m.column.rec
+export const pressureOf = (m: { pressure: number | null; column: Column }): number => m.pressure ?? m.column.p
+
+/** Sets every phase that runs at the standard flow to `flow`. */
+export function applyStdFlow(phases: readonly Phase[], flow: number): Phase[] {
+  return phases.map((p) => (p.flowStd && p.flow !== flow ? { ...p, flow } : p))
+}
+
 /**
  * On column change: clamp each phase's flow to the column's max flow. No-op when max flow is unknown.
  * Phases on Waste bypass the column and keep their flow.
