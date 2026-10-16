@@ -6,11 +6,12 @@ interface Props {
   phaseName: string
   canDelete: boolean
   onAdd: () => void
+  onAddBefore: () => void
   onDelete: () => void
   onClose: () => void
 }
 
-export function PhaseMenu({ anchor, phaseName, canDelete, onAdd, onDelete, onClose }: Props) {
+export function PhaseMenu({ anchor, phaseName, canDelete, onAdd, onAddBefore, onDelete, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -44,7 +45,7 @@ export function PhaseMenu({ anchor, phaseName, canDelete, onAdd, onDelete, onClo
       className="context-menu"
       role="menu"
       aria-label={`Phase ${anchor.index + 1}, ${phaseName}`}
-      style={{ left: Math.min(anchor.x, window.innerWidth - 200), top: Math.min(anchor.y, window.innerHeight - 96) }}
+      style={{ left: Math.min(anchor.x, window.innerWidth - 200), top: Math.min(anchor.y, window.innerHeight - 130) }}
       onContextMenu={(e) => e.preventDefault()}
       onKeyDown={(e) => {
         if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
@@ -54,6 +55,9 @@ export function PhaseMenu({ anchor, phaseName, canDelete, onAdd, onDelete, onClo
         items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus()
       }}
     >
+      <button type="button" role="menuitem" onClick={run(onAddBefore)}>
+        Add phase before
+      </button>
       <button type="button" role="menuitem" onClick={run(onAdd)}>
         Add phase after
       </button>

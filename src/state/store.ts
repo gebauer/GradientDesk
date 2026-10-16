@@ -3,7 +3,7 @@ import { clampFlows, convertLength, updatePhaseLinked } from '../domain/calc'
 import { columnsFor, customRecFlow, SEED_COLUMNS, touchRecent } from '../domain/columns'
 import { resolveColumn } from '../domain/methodJson'
 import { MAX_SLOT } from '../domain/primeview'
-import { defaultMethodName, defaultSelection, newPhaseAfter, templateFor } from '../domain/templates'
+import { defaultMethodName, defaultSelection, newPhaseAfter, newPhaseBefore, templateFor } from '../domain/templates'
 import type { ApplicationId, Column, LengthUnit, Method, Phase } from '../domain/types'
 import * as storage from '../storage/local'
 
@@ -44,7 +44,8 @@ export type Action =
   | { type: 'selectPhase'; index: number }
   | { type: 'updatePhase'; index: number; patch: Partial<Phase> }
   | { type: 'setUnit'; index: number; unit: LengthUnit }
-  | { type: 'addPhase' }
+  /** Inserts a new phase after (default) or before the selected one and selects it. */
+  | { type: 'addPhase'; before?: boolean }
   | { type: 'deletePhase' }
   | { type: 'setStep'; step: Step }
   | { type: 'setMethodName'; name: string }
@@ -120,8 +121,9 @@ export function reducer(s: State, a: Action): State {
     }
     case 'addPhase': {
       const src = s.phases[s.sel]
-      const phases = [...s.phases.slice(0, s.sel + 1), newPhaseAfter(src), ...s.phases.slice(s.sel + 1)]
-      return { ...s, phases, sel: s.sel + 1 }
+      const at = a.before ? s.sel : s.sel + 1
+      const phases = [...s.phases.slice(0, at), a.before ? newPhaseBefore(src) : newPhaseAfter(src), ...s.phases.slice(at)]
+      return { ...s, phases, sel: at }
     }
     case 'deletePhase': {
       if (s.phases.length <= 1) return s

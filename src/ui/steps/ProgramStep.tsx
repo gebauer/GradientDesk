@@ -84,9 +84,14 @@ export function ProgramStep({ state, dispatch }: { state: State; dispatch: (a: A
               </li>
             ))}
           </ul>
-          <button type="button" className="add-phase" onClick={() => dispatch({ type: 'addPhase' })}>
-            + Add phase after selected
-          </button>
+          <div className="add-phase-row">
+            <button type="button" className="add-phase" onClick={() => dispatch({ type: 'addPhase', before: true })}>
+              + Add before
+            </button>
+            <button type="button" className="add-phase" onClick={() => dispatch({ type: 'addPhase' })}>
+              + Add after selected
+            </button>
+          </div>
         </div>
 
         <section className="card phase-form" aria-labelledby="phase-form-title">
@@ -266,6 +271,10 @@ export function ProgramStep({ state, dispatch }: { state: State; dispatch: (a: A
           onAdd={() => {
             dispatch({ type: 'selectPhase', index: menu.index })
             dispatch({ type: 'addPhase' })
+          }}
+          onAddBefore={() => {
+            dispatch({ type: 'selectPhase', index: menu.index })
+            dispatch({ type: 'addPhase', before: true })
           }}
           onDelete={() => {
             dispatch({ type: 'selectPhase', index: menu.index })

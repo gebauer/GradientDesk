@@ -77,10 +77,10 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
   - Column max flow: dotted red line `oklch(0.6 0.15 25)` with the label "column max X ml/min". Not drawn when the column has no max flow.
   - Fraction ticks: 6 px vertical marks under the plot, one per fraction volume.
   - **Level lines**: isocratic phases have an invisible 12 px hit line along their %B line (cursor ns-resize, faint highlight on hover). Dragging it changes Start and End %B together; length stays.
-  - **Context menu**: right-click (or menu key / Shift+F10) on a phase band, level line or phase list row selects the phase and opens a menu at the pointer: "Add phase after", "Delete phase" (red, disabled with one phase). Popover style, 180 px min width; closes on Escape, outside click, scroll.
+  - **Context menu**: right-click (or menu key / Shift+F10) on a phase band, level line or phase list row selects the phase and opens a menu at the pointer: "Add phase before", "Add phase after", "Delete phase" (red, disabled with one phase). Popover style, 180 px min width; closes on Escape, outside click, scroll.
   - **Handles**: one at the end of each phase (v1, %B end), except pump wash phases (no handle, no level line; edited in the form). Visible circle r=5, white (selected: phase color), 1.5 px ink stroke. Invisible hit area r=12, cursor move.
 - Below the chart: a 2-column grid `340px 1fr`, gap 16.
-  - **Phases list**: header "Phases" with "n · total ml". Each row is a grid `22px 10px 1fr auto`: number, color square, name, meta ("5 CV · 5→100 %B"). The selected row has background `#f3f3f1` and an inset 3 px left ink bar. Footer button "+ Add phase after selected".
+  - **Phases list**: header "Phases" with "n · total ml". Each row is a grid `22px 10px 1fr auto`: number, color square, name, meta ("5 CV · 5→100 %B"). The selected row has background `#f3f3f1` and an inset 3 px left ink bar. Footer with two buttons side by side, split by a divider: "+ Add before" and "+ Add after selected".
   - **Phase form**: header with color square, name 16 px / 600, "Phase i of n", and right "X ml · Y CV · Z min". Then a 4-column grid of fields (label 11 px uppercase muted, input 32 px high, border `#d0d0cc`, radius 4):
     - Name (span 2)
     - Phase type (span 2): Equilibration, Sample application, Wash, Elution, Strip / CIP, Pump wash. Changing the type sets the injection valve to the type's default.
@@ -114,7 +114,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
 ## Interactions & Behavior
 - **Drag a handle**: x changes the phase length (stored in the phase's unit, rounded to 0.1). y changes %B (0–100, integer). For a gradient phase, y changes End %B; for an isocratic phase, it changes both Start and End. While dragging, the x domain is frozen to the total at drag start so the axis doesn't rescale under the cursor. Drag starts on mousedown, then window mousemove/mouseup listeners take over. Add pointer/touch support in production.
 - **Phase selection** is shared between the chart band, the list row and Previous/Next.
-- **Add phase**: inserts "New phase" (wash, 5 CV, %B = end %B of the selected phase, same flow and inlet) after the selected phase and selects it.
+- **Add phase**: inserts "New phase" (wash, 5 CV, same flow and inlet) after the selected phase at its end %B, or before it at its start %B (so a phase can be added before phase 1 without a %B step), and selects it.
 - **Delete**: only allowed when more than one phase exists.
 - **Save**: upserts by method name into the library.
 - **Open / Import**: replaces the current program and jumps to step 3.

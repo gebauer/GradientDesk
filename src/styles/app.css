@@ -753,12 +753,21 @@ select.input {
   color: var(--text-secondary);
 }
 
+.add-phase-row {
+  display: flex;
+  border-top: 1px solid var(--border-divider);
+}
+
 .add-phase {
+  flex: 1;
   height: 38px;
   border: none;
-  border-top: 1px solid var(--border-divider);
   background-color: var(--surface-footer);
   font-size: 13px;
+}
+
+.add-phase + .add-phase {
+  border-left: 1px solid var(--border-divider);
 }
 
 .phase-form {

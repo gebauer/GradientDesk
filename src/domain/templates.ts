@@ -147,3 +147,8 @@ export function defaultMethodName(app: ApplicationId, column: Column): string {
 export function newPhaseAfter(selected: Phase): Phase {
   return P('New phase', 'wash', 5, 'CV', selected.b1, selected.b1, selected.flow, 0, selected.inlet, false)
 }
+
+/** Phase inserted by "Add phase before": runs at the selected phase's start %B, so no %B step appears. */
+export function newPhaseBefore(selected: Phase): Phase {
+  return P('New phase', 'wash', 5, 'CV', selected.b0, selected.b0, selected.flow, 0, selected.inlet, false)
+}

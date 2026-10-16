@@ -85,6 +85,18 @@ describe('phases', () => {
     expect(s.phases).toHaveLength(1)
   })
 
+  test('add before inserts at the selection, at its start %B, and selects the new phase', () => {
+    const s = run(initialState(), { type: 'loadApp', app: 'imac' }, { type: 'selectPhase', index: 0 }, { type: 'addPhase', before: true })
+    expect(s.sel).toBe(0)
+    expect(s.phases).toHaveLength(7)
+    expect(s.phases[0]).toMatchObject({ name: 'New phase', b0: 0, b1: 0 })
+    expect(s.phases[1].name).toBe('Equilibration')
+    const mid = run(s, { type: 'selectPhase', index: 4 }, { type: 'addPhase', before: true })
+    expect(mid.sel).toBe(4)
+    expect(mid.phases[4]).toMatchObject({ name: 'New phase', b0: 5, b1: 5 })
+    expect(mid.phases[5].name).toBe('Elution')
+  })
+
   test('switching the unit converts the length', () => {
     const s = run(initialState(), { type: 'setUnit', index: 0, unit: 'ml' })
     expect(s.phases[0]).toMatchObject({ unit: 'ml', len: 25 })
