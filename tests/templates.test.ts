@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { calcProgram } from '../src/domain/calc'
 import { columnsFor, SEED_COLUMNS } from '../src/domain/columns'
-import { APPLICATIONS, defaultInj, defaultMethodName, defaultSelection, newPhaseAfter, PHASE_TYPES, templateFor } from '../src/domain/templates'
+import { APPLICATIONS, defaultInj, gradientCV, defaultMethodName, defaultSelection, newPhaseAfter, PHASE_TYPES, templateFor } from '../src/domain/templates'
 import type { ApplicationId, Column } from '../src/domain/types'
 import { validateProgram } from '../src/domain/validate'
 
@@ -26,10 +26,10 @@ describe('templates (ml per phase)', () => {
   test('IMAC on HisTrap HP 1 ml uses slow load and 1 ml fractions', () => {
     const c = col('HisTrap HP 1 ml')
     const ph = templateFor('imac', c)
-    expect(mls('imac', c)).toEqual([5, 25, 10, 20, 5, 5])
+    expect(mls('imac', c)).toEqual([5, 25, 10, 30, 5, 5])
     expect(ph[1].flow).toBe(0.5)
     expect(ph[3].frac).toBe(1)
-    expect(calcProgram(ph, c).time).toBe(95)
+    expect(calcProgram(ph, c).time).toBe(105)
   })
 
   test('IEX on HiTrap Q HP 5 ml', () => {
@@ -46,7 +46,7 @@ describe('templates (ml per phase)', () => {
 
   test('HIC on HiTrap Phenyl HP 1 ml', () => {
     const c = col('HiTrap Phenyl HP 1 ml')
-    expect(mls('hic', c)).toEqual([5, 20, 5, 20, 5, 5])
+    expect(mls('hic', c)).toEqual([5, 20, 5, 30, 5, 5])
     expect(templateFor('hic', c)[1].flow).toBe(0.5)
   })
 
@@ -106,5 +106,14 @@ test('injection valve default follows the phase type', () => {
   for (const app of APPLICATIONS) {
     const c = columnsFor(app.id, SEED_COLUMNS)[0]
     expect(templateFor(app.id, c).every((p) => p.inj === defaultInj(p.type)), app.id).toBe(true)
+  }
+})
+
+test('gradient elutions run 30 CV below 3 ml, 20 CV from 3 ml', () => {
+  const c = col('HisTrap HP 1 ml')
+  expect([gradientCV({ ...c, cv: 2.9 }), gradientCV({ ...c, cv: 3 })]).toEqual([30, 20])
+  for (const app of ['general', 'preloaded', 'imac', 'iex', 'hic'] as const) {
+    expect(templateFor(app, c).find((p) => p.type === 'elution'), app).toMatchObject({ len: 30, unit: 'CV', grad: true })
+    expect(templateFor(app, col('HisTrap HP 5 ml')).find((p) => p.type === 'elution'), app).toMatchObject({ len: 20 })
   }
 })

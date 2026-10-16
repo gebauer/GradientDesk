@@ -41,6 +41,7 @@ Vite + React 19 (latest stable) + TypeScript (strict). Node 24 LTS (`.nvmrc`). P
 - Deployed on Coolify from `main` via the `Dockerfile` (nginx, static). Keep `Dockerfile`, `nginx.conf` and CI working; any PR must pass `lint`, `test`, `build`.
 - Keep the "not affiliated with Cytiva" disclaimer (README and app footer); never use Cytiva logos or other Cytiva material.
 - Conventional commits (`feat:`, `fix:`, `chore:`…).
+- Every commit bumps the version in `package.json` (and `package-lock.json`, e.g. `npm version <x.y.z> --no-git-tag-version`): minor (`0.1.0` → `0.2.0`) by default, patch (`0.2.0` → `0.2.1`) for very small changes. For big changes, suggest a major bump to the owner instead of doing it.
 
 ## Domain glossary
 - **CV**: column volume (ml)

@@ -70,6 +70,9 @@ const P = (
 /** Fraction size for gradient/step elutions: 2 ml, or 1 ml for columns below 5 ml. */
 const elutionFrac = (c: Column) => (c.cv >= 5 ? 2 : 1)
 
+/** Gradient elution length: 30 CV below 3 ml, because the mixer smooths shorter gradients on small columns; otherwise 20 CV. */
+export const gradientCV = (c: Column) => (c.cv < 3 ? 30 : 20)
+
 /** Slow sample load used by IEX, HIC and affinity. */
 const slowLoad = (c: Column) => Math.max(0.5, c.rec / 5)
 
@@ -78,12 +81,12 @@ const TEMPLATES: Record<ApplicationId, (c: Column) => Phase[]> = {
     P('Equilibration', 'equil', 5, 'CV', 0, 0, c.rec, 0, 1, true),
     P('Sample load', 'sample', 10, 'ml', 0, 0, slowLoad(c), 0, 8, false),
     P('Wash', 'wash', 5, 'CV', 0, 0, c.rec, 0, 1, false),
-    P('Elution', 'elution', 20, 'CV', 0, 100, c.rec, elutionFrac(c), 1, true),
+    P('Elution', 'elution', gradientCV(c), 'CV', 0, 100, c.rec, elutionFrac(c), 1, true),
     P('Re-equilibration', 'equil', 5, 'CV', 0, 0, c.rec, 0, 1, false),
   ],
   preloaded: (c) => [
     P('Wash', 'wash', 5, 'CV', 0, 0, c.rec, 0, 1, true),
-    P('Elution', 'elution', 20, 'CV', 0, 100, c.rec, elutionFrac(c), 1, true),
+    P('Elution', 'elution', gradientCV(c), 'CV', 0, 100, c.rec, elutionFrac(c), 1, true),
     P('Strip', 'strip', 5, 'CV', 100, 100, c.rec, 0, 1, false),
     P('Re-equilibration', 'equil', 5, 'CV', 0, 0, c.rec, 0, 1, false),
   ],
@@ -91,7 +94,7 @@ const TEMPLATES: Record<ApplicationId, (c: Column) => Phase[]> = {
     P('Equilibration', 'equil', 5, 'CV', 0, 0, c.rec, 0, 1, true),
     P('Sample load', 'sample', 25, 'ml', 0, 0, c.cv >= 5 ? 1 : 0.5, 0, 8, false),
     P('Wash', 'wash', 10, 'CV', 5, 5, c.rec, 0, 1, false),
-    P('Elution', 'elution', 20, 'CV', 5, 100, c.rec, elutionFrac(c), 1, true),
+    P('Elution', 'elution', gradientCV(c), 'CV', 5, 100, c.rec, elutionFrac(c), 1, true),
     P('Strip', 'strip', 5, 'CV', 100, 100, c.rec, 0, 1, false),
     P('Re-equilibration', 'equil', 5, 'CV', 0, 0, c.rec, 0, 1, false),
   ],
@@ -106,7 +109,7 @@ const TEMPLATES: Record<ApplicationId, (c: Column) => Phase[]> = {
     P('Equilibration', 'equil', 5, 'CV', 0, 0, c.rec, 0, 1, true),
     P('Sample load', 'sample', 20, 'ml', 0, 0, slowLoad(c), 0, 8, false),
     P('Wash', 'wash', 5, 'CV', 0, 0, c.rec, 0, 1, false),
-    P('Elution', 'elution', 20, 'CV', 0, 50, c.rec, elutionFrac(c), 1, true),
+    P('Elution', 'elution', gradientCV(c), 'CV', 0, 50, c.rec, elutionFrac(c), 1, true),
     P('High-salt strip', 'strip', 5, 'CV', 100, 100, c.rec, 0, 1, false),
     P('Re-equilibration', 'equil', 5, 'CV', 0, 0, c.rec, 0, 1, false),
   ],
@@ -114,7 +117,7 @@ const TEMPLATES: Record<ApplicationId, (c: Column) => Phase[]> = {
     P('Equilibration', 'equil', 5, 'CV', 0, 0, c.rec, 0, 1, true),
     P('Sample load', 'sample', 20, 'ml', 0, 0, slowLoad(c), 0, 8, false),
     P('Wash', 'wash', 5, 'CV', 0, 0, c.rec, 0, 1, false),
-    P('Elution', 'elution', 20, 'CV', 0, 100, c.rec, elutionFrac(c), 1, true),
+    P('Elution', 'elution', gradientCV(c), 'CV', 0, 100, c.rec, elutionFrac(c), 1, true),
     P('Strip', 'strip', 5, 'CV', 100, 100, c.rec, 0, 1, false),
     P('Re-equilibration', 'equil', 5, 'CV', 0, 0, c.rec, 0, 1, false),
   ],
