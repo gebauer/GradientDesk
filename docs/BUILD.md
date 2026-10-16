@@ -83,6 +83,6 @@ Note: data lives in each user's browser (`localStorage`), so redeploys never tou
 
 ## Open points
 - Resolved: PrimeView method dump format, from a real sample (`tests/golden/sample-imac-gradient.txt`).
-- To confirm on the instrument: two breakpoints at the same volume for %B steps; `Max pressure (kPa)` = column limit; injection valve (`Inj`) for loop injection, e.g. SEC, and the `Waste` keyword for pump wash; comment lines after the breakpoint table (GradientDesk method block).
+- To confirm on the instrument: two breakpoints at the same volume for %B steps; `Max pressure (kPa)` = column limit; injection valve (`Inj`) for loop injection, e.g. SEC, and the `Waste` keyword for pump wash; special characters (`; = [ \`) in header comment lines; maximum number of breakpoints. Confirmed: linear %B between breakpoints; lines ≤ 100 characters including CRLF; nothing but empty lines after the last breakpoint row.
 - Seed column specs are placeholders; verify against datasheets later. The data structure is final.
 - Resolved: ÄKTA prime and prime plus do not differ.

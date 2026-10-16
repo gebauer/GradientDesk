@@ -1,7 +1,7 @@
 # AKTAprime Method Dump Format (PrimeView, Dump Format V1.00)
 
 Specification for generating and parsing AKTAprime method files used by PrimeView.
-Derived from a real PrimeView-written file (`PrimeMeth_002.txt`, AKTAprime V2.02) and tests on the instrument by the project owner.
+Derived from a real method file (`PrimeMeth_002.txt`, AKTAprime V2.02) and tests on the instrument by the project owner. PrimeView only reads and shows these files; it does not write them. Methods are written by hand in a text editor (or by GradientDesk).
 Implemented in `src/domain/primeview.ts`; byte-exact reference file `tests/golden/sample-imac-gradient.txt`.
 
 The format has a **canonical layout** (what PrimeView writes, and what GradientDesk writes) and a **tolerant reading**: empty lines and the spacing around the commas in breakpoint rows are not significant.
@@ -17,6 +17,7 @@ The format has a **canonical layout** (what PrimeView writes, and what GradientD
 | Max. number of methods | 99 |
 | Encoding | ASCII, no BOM |
 | Line ending | CRLF (`\r\n`) on every line, including the last line |
+| Line length | at most 100 characters **including** the CRLF, so 98 visible characters; a longer line is a parser error in PrimeView (tested on the instrument) |
 
 ---
 
@@ -34,7 +35,7 @@ The format has a **canonical layout** (what PrimeView writes, and what GradientD
 
 ## 3. Structure (grammar)
 
-Empty lines may appear anywhere and are ignored.
+Empty lines may appear anywhere and are ignored. Comment lines are allowed only before the table: after the last breakpoint row only empty lines may follow (no spaces, no other characters, no comments; tested on the instrument).
 
 ```
 file      := { comment } settings { comment } table
@@ -97,7 +98,7 @@ Ten fields, each introduced by a comma, in the order below. Spaces around a valu
 | 9 | Autozero | 9 | flag | `Y`, `N` | UV autozero at this breakpoint |
 | 10 | Eventmark | – | flag | `Y`, `N` | set event mark |
 
-A breakpoint sets flow, fraction size, buffer valve and injection valve from its volume on. `Conc` is interpolated linearly to the next breakpoint. The last row marks the end of the method; its `Volume` is the total run volume.
+A breakpoint sets flow, fraction size, buffer valve and injection valve from its volume on. `Conc` is interpolated linearly to the next breakpoint (confirmed on the instrument). The last row marks the end of the method; its `Volume` is the total run volume.
 
 Canonical example row:
 
@@ -127,12 +128,12 @@ Readers don't depend on any of the layout details above, only on the line types 
 2. First `Volume` = `0.0`; `Volume` strictly increasing. Two breakpoints at the same volume do not work on the instrument.
 3. `Conc` 0–100, `Buff` 1–8, `Inj` ∈ {`Load`, `Inject`, `Waste`}, flags ∈ {`Y`, `N`}.
 4. Canonical layout only: a value must not exceed its field width minus 1 (e.g. `Volume` ≤ 8 characters).
+5. No line longer than 100 characters including CRLF (98 visible); nothing but empty lines after the last breakpoint row.
 
 ---
 
 ## 9. Open points
 
-- Whether `Conc` changes linearly (gradient) or stepwise between breakpoints. AKTAprime convention suggests linear; GradientDesk assumes linear.
 - Maximum number of breakpoints per method.
 
 ---
@@ -143,12 +144,19 @@ Readers don't depend on any of the layout details above, only on the line types 
 - Volumes are rounded to 0.1 ml at phase boundaries. Each phase must be at least 0.1 ml after rounding, and at least 0.2 ml when it starts with a %B step.
 - On import, a 0.1 ml segment that only changes %B (same flow, fraction size, inlet and injection valve as the phase before, no autozero) is folded into the following phase, so export → import → export is byte-identical.
 - `Max pressure (kPa)` is written as the column's pressure limit in kPa, capped at 1000 (pending owner confirmation; the default in PrimeView files is 100).
-- Credit lines: GradientDesk adds two comment lines inside the header block, before the closing `**` line:
+- Header: GradientDesk writes a compact header: the PrimeView header lines without the `**` spacer lines, then the credit lines and the method block (§11), all inside the one `*****` box:
   ```
-  ** Created with     , GradientDesk v<version> (gradientdesk.xcience.net, github.com/gebauer/GradientDesk)
+  ** Method Dump
+  ** AKTAprime   Ver  , V2.02
+  ** Dump Format Ver  , V1.00
+  ** Created with     , GradientDesk v<version> (gradientdesk.xcience.net)
+  ** Source           , github.com/gebauer/GradientDesk
   ** Created by       , <name>
+  ** GradientDesk method
+  ...
   ```
-  The name comes from the "Created by" field (per browser, may be empty: the line then ends with the comma, as a spot to fill in by hand). Both are converted to ASCII (ä → ae, ß → ss, accents dropped, anything else → `?`). Comment lines are ignored by readers, so they don't affect import. Reference: `tests/golden/gradientdesk-imac-gradient.txt`; without these lines the output equals the PrimeView sample byte for byte.
+  The two `Ver` lines keep their 15 trailing spaces. The name comes from the "Created by" field (per browser, may be empty: the line then ends with the comma, as a spot to fill in by hand). Version and name are converted to ASCII (ä → ae, ß → ss, accents dropped, anything else → `?`) and cut so the line stays within 96 characters. From `Method Settings` on, the output equals the PrimeView sample byte for byte. Reference: `tests/golden/gradientdesk-imac-gradient.txt`.
+- Every line GradientDesk writes is at most 96 visible characters (`MAX_LINE`), 2 below PrimeView's limit of 98 plus CRLF.
 - `Inj` is written from the phase's injection valve (`Load`, `Inject`, `Waste`; default by phase type: sample → `Inject`, pump wash → `Waste`, others → `Load`) and read back on import; an unknown value reads as `Load`. `Peak` 0; `Eventmark` N. On import, peak thresholds and event marks are dropped with a message.
 - Pump wash: one segment per line in the order B, A8 … A1, each written like a phase on `Waste` (B at 100 %B, An at 0 %B on `Buff` n). The step from B to A8 follows the %B step rule above (end breakpoint, next start at +0.1 ml). On import, a `Waste` segment at constant 100 or 0 %B becomes a single-line pump wash.
 - The keyword `Waste` is assumed from the instrument's valve positions; no PrimeView dump with `Waste` has been checked yet.
@@ -157,53 +165,22 @@ Readers don't depend on any of the layout details above, only on the line types 
 
 ## 11. GradientDesk method block
 
-GradientDesk appends the complete method as comment lines after the last breakpoint row, so a re-import restores everything the breakpoint table can't hold (method name, application, column, phase names, types and units). Code: `src/domain/methodTxt.ts`; byte-exact reference: `tests/golden/gradientdesk-imac-method.txt`.
+GradientDesk writes the complete method into the comment header, so a re-import restores everything the breakpoint table can't hold (method name, application, column, phase names, types and units). Comments must come before the table and lines must stay within 100 characters (§1, §3), so the block is compact and wraps. Code: `src/domain/methodTxt.ts`; byte-exact reference: `tests/golden/gradientdesk-imac-method.txt`.
 
 ```
-<last breakpoint row>
-
-*****************************************************************
 ** GradientDesk method
-** Everything GradientDesk needs to restore this method on import.
-*****************************************************************
-** [method]
-** format = gradientdesk
-** version = 2
-** name = IMAC_HisTrapHP5ml
-** application = imac
-**
-** [column]
-** id = histrap-hp-5-ml
-** name = HisTrap HP 5 ml
-** manufacturer = Cytiva
-** cv = 5
-** flow = 20
-** rec = 5
-** p = 0.5
-** apps = imac
-**
-** [phase 1]
-** name = Equilibration
-** type = equil
-** length = 5
-** unit = CV
-** startB = 0
-** endB = 0
-** gradient = no
-** flow = 5
-** fraction = 0
-** inletA = 1
-** injection = Load
-** autozero = yes
-**
-** [phase 2]
+** [method] format=gradientdesk; version=2; name=IMAC_HisTrapHP5ml; application=imac
+** [column] id=histrap-hp-5-ml; name=HisTrap HP 5 ml; manufacturer=Cytiva; cv=5; flow=20; rec=5
+**   p=0.5; apps=imac
+** [phase 1] name=Equilibration; type=equil; length=5; unit=CV; startB=0; endB=0; gradient=no
+**   flow=5; fraction=0; inletA=1; injection=Load; autozero=yes
 ...
 *****************************************************************
 ```
 
-- Every line starts with `**`, so it is a comment line (§2). The block starts at the line `** GradientDesk method`; sections are `** [method]`, `** [column]`, `** [phase N]`; entries are `** key = value`, split at the first `=`, spaces around key and value are not significant.
-- Keys are the method data field names (docs/SPEC.md "Method data"); pump wash phases add `lines` (comma-separated, wash order, e.g. `** lines = B, A8, A1`); the column's `note` and `custom` are written only when set. Numbers as written by JavaScript (`String(n)`), booleans `yes` / `no`, unknown max flow `none`, `apps` comma-separated.
-- Values are ASCII: `\` is written as `\\`, any other character outside 0x20–0x7E as `\uXXXX` (UTF-16 code unit), and leading or trailing spaces as `\u0020`.
+- The block starts at the line `** GradientDesk method` and ends at the header's closing `*****` line. Sections are `** [method]`, `** [column]`, `** [phase N]`, followed on the same line by entries `key=value`, separated by `;`. When a line would exceed 96 characters, the section continues on lines starting with `**   `. A value too long for one line is split: `key=<first part>` then `key+=<next part>` (appended on import). Entries are split at the first `=`; spaces around keys and values are not significant.
+- Keys are the method data field names (docs/SPEC.md "Method data"); pump wash phases add `lines` (comma-separated, wash order, e.g. `lines=B, A8, A1`); the column's `recEstimated`, `note` and `custom` are written only when set. Numbers as written by JavaScript (`String(n)`), booleans `yes` / `no`, unknown max flow `none`, `apps` comma-separated.
+- Values are ASCII: `\` is written as `\\`, `;` and any character outside 0x20–0x7E as `\uXXXX` (UTF-16 code unit), and leading or trailing spaces (of the value and of each split part) as `\u0020`. Parts are never split inside an escape.
 - No timestamp: the same method always gives the same file.
 - Import: the block is used only when the breakpoints it produces equal the file's rows (compared without spaces). Otherwise, or when the block can't be read, the table is imported (§10) with a message. A file without a block is imported from the table.
-- Open point: §3 only shows comments before the table. Whether PrimeView and the instrument accept comment lines after the last breakpoint row still has to be confirmed.
+- Older GradientDesk files had the block after the breakpoint table, one `** key = value` line per entry; PrimeView rejects them, but GradientDesk still imports them (`tests/golden/legacy-trailing-block.txt`).

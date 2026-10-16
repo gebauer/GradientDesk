@@ -1,14 +1,11 @@
 
 *****************************************************************
 ** Method Dump
-**
 ** AKTAprime   Ver  , V2.02               
-**
 ** Dump Format Ver  , V1.00               
-**
-** Created with     , GradientDesk v0.1.0 (gradientdesk.xcience.net, github.com/gebauer/GradientDesk)
+** Created with     , GradientDesk v0.1.0 (gradientdesk.xcience.net)
+** Source           , github.com/gebauer/GradientDesk
 ** Created by       , Jan Gebauer
-**
 *****************************************************************
 
 

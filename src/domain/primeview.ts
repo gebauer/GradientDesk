@@ -22,20 +22,26 @@ export interface ExportInfo {
   author: string
 }
 
-/** Comment lines (`**`) are ignored by PrimeView, so the credit lines live inside the comment header. */
-function header(info: ExportInfo): string[] {
+/** PrimeView rejects a line longer than 100 characters including CRLF (98 visible); GradientDesk keeps a margin of 2. */
+export const MAX_LINE = 96
+
+/**
+ * Compact comment header: the PrimeView header lines without the spacer lines, the credit lines,
+ * then `extra` (the GradientDesk method block). Comments are only allowed before the breakpoint
+ * table, so everything GradientDesk adds lives here.
+ */
+function header(info: ExportInfo, extra: readonly string[]): string[] {
+  const by = '** Created by       , '
   return [
     '',
     '*****************************************************************',
     '** Method Dump',
-    '**',
     '** AKTAprime   Ver  , V2.02               ',
-    '**',
     '** Dump Format Ver  , V1.00               ',
-    '**',
-    `** Created with     , GradientDesk v${toAscii(info.version)} (${APP_URL}, ${REPO_URL})`,
-    `** Created by       , ${toAscii(info.author)}`.trimEnd(),
-    '**',
+    `** Created with     , GradientDesk v${toAscii(info.version)} (${APP_URL})`.slice(0, MAX_LINE),
+    `** Source           , ${REPO_URL}`,
+    (by + toAscii(info.author)).slice(0, MAX_LINE).trimEnd(),
+    ...extra,
     '*****************************************************************',
     '',
     '',
@@ -84,10 +90,11 @@ export function maxPressureKpa(column: Column): number {
   return Math.round(Math.min(column.p, SYSTEM_MAX_PRESSURE) * 1000)
 }
 
-export function toPrimeViewTxt(phases: readonly Phase[], column: Column, info: ExportInfo = { version: '0.0.0', author: '' }): string {
+/** `comment`: extra comment lines for the header (each at most MAX_LINE characters). */
+export function toPrimeViewTxt(phases: readonly Phase[], column: Column, info: ExportInfo = { version: '0.0.0', author: '' }, comment: readonly string[] = []): string {
   const bps = breakpoints(phases, column)
   const lines = [
-    ...header(info),
+    ...header(info, comment),
     '******************',
     '** Method Settings',
     '******************',

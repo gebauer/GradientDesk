@@ -1,22 +1,27 @@
 import { fromMethodFile, toMethodFile } from './methodJson'
-import { fromPrimeViewTxt, toPrimeViewTxt, type ExportInfo } from './primeview'
+import { fromPrimeViewTxt, MAX_LINE, toPrimeViewTxt, type ExportInfo } from './primeview'
 import type { Method, Phase } from './types'
 
 /**
- * The .txt file GradientDesk writes: the PrimeView method dump followed by a comment block in INI
- * style that holds the whole method (name, application, column, phases), so a re-import restores
- * it completely. Every line is a comment line (docs/primeview-format.md §2). Spec: §11.
+ * The .txt file GradientDesk writes: the PrimeView method dump with the whole method (name,
+ * application, column, phases) in its comment header, so a re-import restores it completely.
+ * PrimeView allows comments only before the breakpoint table and no line over 100 characters,
+ * so the block is compact and wraps at MAX_LINE. Spec: docs/primeview-format.md §11.
  */
 
-const CRLF = '\r\n'
-const RULE = '*'.repeat(65)
 const MARKER = '** GradientDesk method'
 const BOOL_KEYS = new Set(['gradient', 'autozero', 'custom', 'recEstimated'])
+const LIST_KEYS = new Set(['apps', 'lines'])
+/** Prefix of a wrapped line. */
+const CONT = '**   '
 
-/** Values must be ASCII: backslash and non-ASCII become \\ and \uXXXX; leading/trailing spaces are kept as  . */
+/**
+ * Values must be ASCII and must not contain the entry separator: backslash, `;` and non-ASCII
+ * become \\ and \uXXXX; leading/trailing spaces are kept as  .
+ */
 export function escapeValue(s: string): string {
   return s
-    .replace(/\\|[^\x20-\x7e]/g, (c) => (c === '\\' ? '\\\\' : `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`))
+    .replace(/\\|;|[^\x20-\x7e]/g, (c) => (c === '\\' ? '\\\\' : `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`))
     .replace(/^ +| +$/g, (m) => '\\u0020'.repeat(m.length))
 }
 
@@ -34,22 +39,51 @@ function format(v: Exclude<Value, undefined>): string {
   return v.map(escapeValue).join(', ')
 }
 
-function section(name: string, entries: Record<string, Value>): string[] {
-  const lines = Object.entries(entries)
-    .filter((e): e is [string, Exclude<Value, undefined>] => e[1] !== undefined)
-    .map(([k, v]) => `** ${k} = ${format(v)}`.trimEnd())
-  return [`** [${name}]`, ...lines, '**']
+/** `key=value`, or for a value too long for one line `key=…` followed by `key+=…` pieces. */
+function tokens(key: string, value: string): string[] {
+  const room = MAX_LINE - CONT.length - key.length - 2
+  if (value.length <= room) return [`${key}=${value}`]
+  // Split between escapes, never inside one; spaces at a piece's ends are escaped so trimming keeps them.
+  const atoms = value.match(/\\u[0-9a-fA-F]{4}|\\\\|[\s\S]/g) ?? []
+  const pieces: string[] = []
+  let piece = ''
+  for (const a of atoms) {
+    if (piece.length + a.length > room - 12) {
+      pieces.push(piece)
+      piece = ''
+    }
+    piece += a
+  }
+  pieces.push(piece)
+  return pieces.map((p, i) => `${key}${i ? '+=' : '='}${p.replace(/^ | $/g, '\\u0020')}`)
 }
 
-/** The method block, one line per entry (CRLF added by the caller). */
+/** `** [name] key=value; key=value; …`, wrapped onto `**   …` lines at MAX_LINE. */
+function section(name: string, entries: Record<string, Value>): string[] {
+  const out: string[] = []
+  let line = `** [${name}]`
+  let first = true
+  for (const [k, v] of Object.entries(entries)) {
+    if (v === undefined) continue
+    for (const t of tokens(k, format(v))) {
+      const next = `${line}${first ? ' ' : '; '}${t}`
+      if (next.length <= MAX_LINE) line = next
+      else {
+        out.push(line)
+        line = CONT + t
+      }
+      first = false
+    }
+  }
+  return [...out, line]
+}
+
+/** The method block for the header, every line at most MAX_LINE characters. */
 export function methodBlock(m: Method): string[] {
   const f = toMethodFile(m)
   const c = f.column
   return [
-    RULE,
     MARKER,
-    '** Everything GradientDesk needs to restore this method on import.',
-    RULE,
     ...section('method', { format: f.format, version: f.version, name: f.name, application: f.application }),
     ...section('column', {
       id: c.id,
@@ -65,43 +99,62 @@ export function methodBlock(m: Method): string[] {
       custom: c.custom ? true : undefined,
     }),
     ...f.phases.flatMap((p, i) => section(`phase ${i + 1}`, p)),
-    RULE,
   ]
 }
 
-/** PrimeView dump plus the method block. */
+/** PrimeView dump with the method block in the header. */
 export function toMethodTxt(m: Method, info?: ExportInfo): string {
-  return toPrimeViewTxt(m.phases, m.column, info) + ['', ...methodBlock(m)].join(CRLF) + CRLF
+  return toPrimeViewTxt(m.phases, m.column, info, methodBlock(m))
 }
 
-/** Reads the method block into a method file object, or null when the file has none. */
+function convert(section: string, key: string, raw: string): unknown {
+  if (BOOL_KEYS.has(key)) return raw === 'yes'
+  if (LIST_KEYS.has(key)) return raw.split(',').map((a) => unescapeValue(a.trim())).filter(Boolean)
+  if (section === 'column' && key === 'flow' && raw === 'none') return null
+  return unescapeValue(raw)
+}
+
+/**
+ * Reads the method block into a method file object, or null when the file has none. Also reads
+ * the older layout with one `** key = value` line per entry after the breakpoint table.
+ */
 export function readMethodBlock(text: string): Record<string, unknown> | null {
   const lines = text.split(/\r?\n/)
   const start = lines.findIndex((l) => l.trimEnd() === MARKER)
   if (start < 0) return null
-  const data: Record<string, unknown> = {}
-  const phases: Record<string, unknown>[] = []
-  let current: Record<string, unknown> | null = null
-  let name = ''
+  const sections: { name: string; raw: Map<string, string> }[] = []
+  let cur: (typeof sections)[number] | null = null
   for (const line of lines.slice(start + 1)) {
-    if (!line.startsWith('**')) continue
-    const body = line.slice(2).trim()
-    const head = /^\[(.+)\]$/.exec(body)
-    if (head) {
-      name = head[1].trim().toLowerCase()
-      current = name === 'method' ? data : name === 'column' ? {} : /^phase \d+$/.test(name) ? {} : null
-      if (name === 'column') data.column = current
-      else if (current && name !== 'method') phases.push(current)
+    // The header's closing rule ends the block (the older layout had a rule before its sections too).
+    if (line.startsWith('***')) {
+      if (sections.length) break
       continue
     }
-    const eq = body.indexOf('=')
-    if (!current || eq < 0) continue
-    const key = body.slice(0, eq).trim()
-    const raw = body.slice(eq + 1).trim()
-    if (BOOL_KEYS.has(key)) current[key] = raw === 'yes'
-    else if (key === 'apps' || key === 'lines') current[key] = raw.split(',').map((a) => unescapeValue(a.trim())).filter(Boolean)
-    else if (name === 'column' && key === 'flow' && raw === 'none') current[key] = null
-    else current[key] = unescapeValue(raw)
+    if (!line.startsWith('**')) continue
+    let body = line.slice(2).trim()
+    const head = /^\[([^\]]+)\]\s*(.*)$/.exec(body)
+    if (head) {
+      cur = { name: head[1].trim().toLowerCase(), raw: new Map() }
+      sections.push(cur)
+      body = head[2]
+    }
+    if (!cur) continue
+    for (const entry of body.split(';')) {
+      const eq = entry.indexOf('=')
+      if (eq <= 0) continue
+      const append = entry[eq - 1] === '+'
+      const key = entry.slice(0, append ? eq - 1 : eq).trim()
+      const raw = entry.slice(eq + 1).trim()
+      if (key) cur.raw.set(key, append ? (cur.raw.get(key) ?? '') + raw : raw)
+    }
+  }
+  const obj = (s: (typeof sections)[number]) => Object.fromEntries([...s.raw].map(([k, v]) => [k, convert(s.name, k, v)]))
+  const data: Record<string, unknown> = {}
+  const phases: Record<string, unknown>[] = []
+  for (const s of sections) {
+    if (s.name === 'method') Object.assign(data, obj(s))
+    else if (s.name === 'column') data.column = obj(s)
+    else if (/^phase \d+$/.test(s.name)) phases.push(obj(s))
   }
   data.phases = phases
   return data

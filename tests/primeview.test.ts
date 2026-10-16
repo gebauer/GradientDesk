@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { breakpoints } from '../src/domain/calc'
 import { columnsFor, SEED_COLUMNS } from '../src/domain/columns'
-import { fromPrimeViewTxt, maxPressureKpa, primeFileName, slotFromFileName, toAscii, toPrimeViewTxt } from '../src/domain/primeview'
+import { fromPrimeViewTxt, MAX_LINE, maxPressureKpa, primeFileName, slotFromFileName, toAscii, toPrimeViewTxt } from '../src/domain/primeview'
 import { validateProgram } from '../src/domain/validate'
 import { APPLICATIONS, templateFor } from '../src/domain/templates'
 import type { Column, Phase } from '../src/domain/types'
@@ -25,10 +25,25 @@ const lowPressureColumn: Column = { id: 'x', name: 'X', manufacturer: '', cv: 1,
 
 describe('export', () => {
   const info = { version: '0.1.0', author: 'Jan Gebauer' }
-  const withoutCredit = (txt: string) => txt.replace(/\*\* Created with[^\r]*\r\n\*\* Created by[^\r]*\r\n\*\*\r\n/, '')
+  const fromSettings = (txt: string) => txt.slice(txt.indexOf('******************\r\n** Method Settings'))
 
-  test('matches the PrimeView sample byte for byte, apart from the credit lines', () => {
-    expect(withoutCredit(toPrimeViewTxt(samplePhases, lowPressureColumn, info))).toBe(golden('sample-imac-gradient.txt'))
+  test('from the settings on, matches the PrimeView sample byte for byte', () => {
+    expect(fromSettings(toPrimeViewTxt(samplePhases, lowPressureColumn, info))).toBe(fromSettings(golden('sample-imac-gradient.txt')))
+  })
+
+  test('the header keeps the PrimeView lines, without the spacer lines', () => {
+    const head = (txt: string) => txt.slice(0, txt.indexOf('******************\r\n** Method Settings')).split('\r\n')
+    const ours = head(toPrimeViewTxt(samplePhases, lowPressureColumn, info))
+    expect(ours.filter((l) => !/^\*\* (Created|Source)/.test(l))).toEqual(head(golden('sample-imac-gradient.txt')).filter((l) => l !== '**'))
+  })
+
+  test('no line is longer than PrimeView allows, for every template and a long author name', () => {
+    for (const app of APPLICATIONS) {
+      for (const c of columnsFor(app.id, SEED_COLUMNS)) {
+        const txt = toPrimeViewTxt(templateFor(app.id, c), c, { version: '10.20.30-beta.4', author: 'x'.repeat(200) })
+        expect(Math.max(...txt.split('\r\n').map((l) => l.length)), `${app.id} / ${c.name}`).toBeLessThanOrEqual(MAX_LINE)
+      }
+    }
   })
 
   test('matches the GradientDesk reference file byte for byte', () => {
@@ -37,7 +52,8 @@ describe('export', () => {
 
   test('credit lines: version, project, author; empty author keeps the spot', () => {
     const lines = toPrimeViewTxt(samplePhases, lowPressureColumn, info).split('\r\n')
-    expect(lines).toContain('** Created with     , GradientDesk v0.1.0 (gradientdesk.xcience.net, github.com/gebauer/GradientDesk)')
+    expect(lines).toContain('** Created with     , GradientDesk v0.1.0 (gradientdesk.xcience.net)')
+    expect(lines).toContain('** Source           , github.com/gebauer/GradientDesk')
     expect(lines).toContain('** Created by       , Jan Gebauer')
     expect(toPrimeViewTxt(samplePhases, lowPressureColumn, { ...info, author: '' }).split('\r\n')).toContain('** Created by       ,')
   })

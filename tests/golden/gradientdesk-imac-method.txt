@@ -1,14 +1,27 @@
 
 *****************************************************************
 ** Method Dump
-**
 ** AKTAprime   Ver  , V2.02               
-**
 ** Dump Format Ver  , V1.00               
-**
-** Created with     , GradientDesk v0.1.0 (gradientdesk.xcience.net, github.com/gebauer/GradientDesk)
+** Created with     , GradientDesk v0.1.0 (gradientdesk.xcience.net)
+** Source           , github.com/gebauer/GradientDesk
 ** Created by       , Jan Gebauer
-**
+** GradientDesk method
+** [method] format=gradientdesk; version=2; name=IMAC_HisTrapHP5ml; application=imac
+** [column] id=histrap-hp-5-ml; name=HisTrap HP 5 ml; manufacturer=Cytiva; cv=5; flow=20; rec=5
+**   p=0.5; apps=imac
+** [phase 1] name=Equilibration; type=equil; length=5; unit=CV; startB=0; endB=0; gradient=no
+**   flow=5; fraction=0; inletA=1; injection=Load; autozero=yes
+** [phase 2] name=Sample load; type=sample; length=25; unit=ml; startB=0; endB=0; gradient=no
+**   flow=1; fraction=0; inletA=8; injection=Inject; autozero=no
+** [phase 3] name=Wash; type=wash; length=10; unit=CV; startB=5; endB=5; gradient=no; flow=5
+**   fraction=0; inletA=1; injection=Load; autozero=no
+** [phase 4] name=Elution; type=elution; length=20; unit=CV; startB=5; endB=100; gradient=yes
+**   flow=5; fraction=2; inletA=1; injection=Load; autozero=yes
+** [phase 5] name=Strip; type=strip; length=5; unit=CV; startB=100; endB=100; gradient=no
+**   flow=5; fraction=0; inletA=1; injection=Load; autozero=no
+** [phase 6] name=Re-equilibration; type=equil; length=5; unit=CV; startB=0; endB=0; gradient=no
+**   flow=5; fraction=0; inletA=1; injection=Load; autozero=no
 *****************************************************************
 
 
@@ -38,109 +51,3 @@ Brkp Volume   Conc Flow  Frac   Buff Inj    Peak   Autozero Eventmark
 ,7   ,225.0   ,100 ,5.0  ,0.0   ,1   ,Load  ,0     ,N       ,N
 ,8   ,225.1   ,0   ,5.0  ,0.0   ,1   ,Load  ,0     ,N       ,N
 ,9   ,250.0   ,0   ,5.0  ,0.0   ,1   ,Load  ,0     ,N       ,N
-
-*****************************************************************
-** GradientDesk method
-** Everything GradientDesk needs to restore this method on import.
-*****************************************************************
-** [method]
-** format = gradientdesk
-** version = 2
-** name = IMAC_HisTrapHP5ml
-** application = imac
-**
-** [column]
-** id = histrap-hp-5-ml
-** name = HisTrap HP 5 ml
-** manufacturer = Cytiva
-** cv = 5
-** flow = 20
-** rec = 5
-** p = 0.5
-** apps = imac
-**
-** [phase 1]
-** name = Equilibration
-** type = equil
-** length = 5
-** unit = CV
-** startB = 0
-** endB = 0
-** gradient = no
-** flow = 5
-** fraction = 0
-** inletA = 1
-** injection = Load
-** autozero = yes
-**
-** [phase 2]
-** name = Sample load
-** type = sample
-** length = 25
-** unit = ml
-** startB = 0
-** endB = 0
-** gradient = no
-** flow = 1
-** fraction = 0
-** inletA = 8
-** injection = Inject
-** autozero = no
-**
-** [phase 3]
-** name = Wash
-** type = wash
-** length = 10
-** unit = CV
-** startB = 5
-** endB = 5
-** gradient = no
-** flow = 5
-** fraction = 0
-** inletA = 1
-** injection = Load
-** autozero = no
-**
-** [phase 4]
-** name = Elution
-** type = elution
-** length = 20
-** unit = CV
-** startB = 5
-** endB = 100
-** gradient = yes
-** flow = 5
-** fraction = 2
-** inletA = 1
-** injection = Load
-** autozero = yes
-**
-** [phase 5]
-** name = Strip
-** type = strip
-** length = 5
-** unit = CV
-** startB = 100
-** endB = 100
-** gradient = no
-** flow = 5
-** fraction = 0
-** inletA = 1
-** injection = Load
-** autozero = no
-**
-** [phase 6]
-** name = Re-equilibration
-** type = equil
-** length = 5
-** unit = CV
-** startB = 0
-** endB = 0
-** gradient = no
-** flow = 5
-** fraction = 0
-** inletA = 1
-** injection = Load
-** autozero = no
-**
-*****************************************************************

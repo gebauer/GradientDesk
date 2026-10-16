@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { columnsFor, SEED_COLUMNS } from '../src/domain/columns'
 import { escapeValue, fromMethodTxt, methodBlock, toMethodTxt, unescapeValue } from '../src/domain/methodTxt'
-import { toPrimeViewTxt } from '../src/domain/primeview'
+import { MAX_LINE, toPrimeViewTxt } from '../src/domain/primeview'
 import { APPLICATIONS, retypePatch, templateFor } from '../src/domain/templates'
 import type { Column, Method } from '../src/domain/types'
 
@@ -35,18 +35,37 @@ describe('method block', () => {
     expect(toMethodTxt(method(), info)).toBe(golden('gradientdesk-imac-method.txt'))
   })
 
-  test('comes after the breakpoint table, which stays the plain PrimeView dump', () => {
+  test('sits in the comment header; nothing follows the last breakpoint row', () => {
     const txt = toMethodTxt(method(), info)
-    const dump = toPrimeViewTxt(method().phases, histrap5, info)
-    expect(txt.startsWith(dump)).toBe(true)
-    expect(txt.slice(dump.length).split('\r\n').filter(Boolean).every((l) => l.startsWith('**'))).toBe(true)
+    const lines = txt.split('\r\n')
+    const block = lines.indexOf('** GradientDesk method')
+    expect(block).toBeGreaterThan(0)
+    expect(block).toBeLessThan(lines.indexOf('** Method Settings'))
+    expect(lines.slice(block, lines.indexOf('*'.repeat(65), block)).every((l) => l.startsWith('**'))).toBe(true)
+    expect(txt.endsWith(',N\r\n')).toBe(true)
+    // Only the header differs from the plain dump.
+    const fromSettings = (t: string) => t.slice(t.indexOf('** Method Settings'))
+    expect(fromSettings(txt)).toBe(fromSettings(toPrimeViewTxt(method().phases, histrap5, info)))
+  })
+
+  test('long values wrap: no line over the limit, and they come back unchanged', () => {
+    const long = 'Säule; sehr lange Bezeichnung = mit Sonderzeichen \\ und Leerzeichen  am Ende '.repeat(4)
+    const c: Column = { ...histrap5, id: 'lab', name: long, note: long, custom: true, apps: [] }
+    const m = method({ name: long, column: c, phases: method().phases.map((p) => ({ ...p, name: long })) })
+    const txt = toMethodTxt(m, { version: '0.1.0', author: long })
+    expect(Math.max(...txt.split('\r\n').map((l) => l.length))).toBeLessThanOrEqual(MAX_LINE)
+    expect(imported(txt)).toEqual(m)
+  })
+
+  test('still reads files with the older block after the breakpoint table', () => {
+    expect(imported(golden('legacy-trailing-block.txt'))).toEqual(method())
   })
 
   test('is ASCII with CRLF on every line', () => {
     const txt = toMethodTxt(method({ name: 'Jürgen 李 \\ test' }), info)
     expect([...txt].every((ch) => ch.charCodeAt(0) < 128)).toBe(true)
     expect(txt.replace(/\r\n/g, '')).not.toMatch(/[\r\n]/)
-    expect(txt.endsWith('*\r\n')).toBe(true)
+    expect(txt.endsWith(',N\r\n')).toBe(true)
   })
 
   test('escapes backslash, non-ASCII and outer spaces losslessly', () => {
@@ -57,7 +76,7 @@ describe('method block', () => {
   })
 
   test('one section per phase', () => {
-    expect(methodBlock(method()).filter((l) => /^\*\* \[phase \d+\]$/.test(l))).toHaveLength(6)
+    expect(methodBlock(method()).filter((l) => /^\*\* \[phase \d+\] /.test(l))).toHaveLength(6)
   })
 })
 
@@ -81,7 +100,7 @@ describe('re-import from the method block', () => {
   test('a pump wash keeps its lines', () => {
     const wash = { ...templateFor('general', histrap5)[0], ...retypePatch(templateFor('general', histrap5)[0], 'pumpwash'), name: 'Pump wash', lines: ['B' as const, 'A8' as const, 'A2' as const] }
     const m = method({ phases: [wash, ...templateFor('imac', histrap5)] })
-    expect(methodBlock(m)).toContain('** lines = B, A8, A2')
+    expect(methodBlock(m).join('\n')).toContain('lines=B, A8, A2')
     expect(imported(toMethodTxt(m))).toEqual(m)
   })
 
@@ -104,7 +123,7 @@ describe('re-import from the method block', () => {
   })
 
   test('an unreadable block falls back to the table, with a message', () => {
-    const txt = toMethodTxt(method()).replace('** format = gradientdesk', '** format = other')
+    const txt = toMethodTxt(method()).replace('format=gradientdesk', 'format=other')
     const r = fromMethodTxt(txt)
     expect(r.kind).toBe('phases')
     expect(r.warnings[0]).toContain('could not be read')

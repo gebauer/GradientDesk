@@ -16,8 +16,9 @@ Vite + React 19 (latest stable) + TypeScript (strict). Node 24 LTS (`.nvmrc`). P
 
 ## Rules
 - Keep domain logic **pure and framework-free** in `src/domain/`: calculations, templates, breakpoints, txt export/import (incl. the method block), method data (de)serialization for localStorage. React components only render and dispatch.
-- The **export format is the contract**. Any change to `toPrimeViewTxt()` must keep the golden-file tests green. Golden files in `tests/golden/` are real PrimeView dumps (CRLF, trailing spaces; `.gitattributes` keeps them byte-exact). When a new sample arrives, add it as a golden file first, then change the code.
-- There is no JSON file export/import: the `.txt` carries the complete method in a trailing `**` comment block (INI style, `docs/primeview-format.md` §11). JSON is only the localStorage format.
+- The **export format is the contract**. Any change to `toPrimeViewTxt()` must keep the golden-file tests green. In `tests/golden/`, `sample-*.txt` are real PrimeView dumps, `gradientdesk-*.txt` GradientDesk's reference output and `legacy-*.txt` older output that must still import (all CRLF with trailing spaces; `.gitattributes` keeps them byte-exact). When a new sample arrives, add it as a golden file first, then change the code.
+- PrimeView rejects any line over 100 characters including CRLF (98 visible) and anything but empty lines after the last breakpoint row (comments included). Keep every written line ≤ 96 (`MAX_LINE`) and all comments in the header.
+- There is no JSON file export/import: the `.txt` carries the complete method in a compact `**` comment block in the header (INI style, `docs/primeview-format.md` §11). JSON is only the localStorage format.
 - Round-trip must hold: `fromJson(toJson(m))` and `fromMethodTxt(toMethodTxt(m))` deep-equal `m` (apart from `modified`). The breakpoint table alone (`fromPrimeViewTxt(toPrimeViewTxt(m))`) must reproduce volumes, %B, flow, fraction, inlet, injection valve and autozero at every breakpoint. Names and types may differ.
 - Volumes and %B are in **ml** and **%**. Store phase length with its unit (`CV`|`ml`) and only convert for display, calculation and export.
 - Validate before export:
