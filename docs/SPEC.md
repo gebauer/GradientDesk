@@ -1,7 +1,7 @@
 # Handoff: GradientDesk (ÄKTA prime)
 
 ## Overview
-A browser app for planning typical chromatography runs on an ÄKTA prime / prime plus. The user picks an application (General, Elute pre-loaded column, IMAC, affinity, IEX, HIC, SEC / desalting, column equilibration), then a column (library or custom). The app loads a template program, which the user edits either graphically (drag handles in a %B-over-volume chart) or phase by phase in a form. The result is exported as a PrimeView-compatible breakpoint table (`.txt`). Methods are stored in the browser and can be exchanged as JSON. Existing JSON or `.txt` files can be imported and edited.
+A browser app for planning typical chromatography runs on an ÄKTA prime / prime plus. The user picks an application (General, Elute pre-loaded column, IMAC, affinity, IEX, HIC, SEC / desalting, column equilibration), then a column (library or custom). The app loads a template program, which the user edits either graphically (drag handles in a %B-over-volume chart) or phase by phase in a form. The result is exported as a PrimeView-compatible breakpoint table (`.txt`). Methods are stored in the browser and exchanged as the `.txt` file, which carries the complete method in a comment block at the end. Existing `.txt` files can be imported and edited.
 
 UI language: **English**. Users: mixed lab staff, teaching and practical courses.
 
@@ -78,33 +78,36 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
   - Fraction ticks: 6 px vertical marks under the plot, one per fraction volume.
   - **Level lines**: isocratic phases have an invisible 12 px hit line along their %B line (cursor ns-resize, faint highlight on hover). Dragging it changes Start and End %B together; length stays.
   - **Context menu**: right-click (or menu key / Shift+F10) on a phase band, level line or phase list row selects the phase and opens a menu at the pointer: "Add phase after", "Delete phase" (red, disabled with one phase). Popover style, 180 px min width; closes on Escape, outside click, scroll.
-  - **Handles**: one at the end of each phase (v1, %B end). Visible circle r=5, white (selected: phase color), 1.5 px ink stroke. Invisible hit area r=12, cursor move.
+  - **Handles**: one at the end of each phase (v1, %B end), except pump wash phases (no handle, no level line; edited in the form). Visible circle r=5, white (selected: phase color), 1.5 px ink stroke. Invisible hit area r=12, cursor move.
 - Below the chart: a 2-column grid `340px 1fr`, gap 16.
   - **Phases list**: header "Phases" with "n · total ml". Each row is a grid `22px 10px 1fr auto`: number, color square, name, meta ("5 CV · 5→100 %B"). The selected row has background `#f3f3f1` and an inset 3 px left ink bar. Footer button "+ Add phase after selected".
   - **Phase form**: header with color square, name 16 px / 600, "Phase i of n", and right "X ml · Y CV · Z min". Then a 4-column grid of fields (label 11 px uppercase muted, input 32 px high, border `#d0d0cc`, radius 4):
     - Name (span 2)
-    - Phase type (span 2): Equilibration, Sample application, Wash, Elution, Strip / CIP
+    - Phase type (span 2): Equilibration, Sample application, Wash, Elution, Strip / CIP, Pump wash. Changing the type sets the injection valve to the type's default.
     - Length, with a CV | ml segmented toggle. Switching the unit converts the value.
     - Start %B
     - End %B (disabled when isocratic)
     - Gradient toggle: "Linear gradient" / "Isocratic"
-    - Flow (ml/min). The border turns red when above the column max, and the warning "Above the column maximum of X ml/min." appears. No check when the column has no max flow.
+    - Flow (ml/min). The border turns red when above the column max, and the warning "Above the column maximum of X ml/min." appears. No check when the column has no max flow or the injection valve is on Waste (the column is bypassed).
+    - Changing the column doesn't clamp the flow of phases on Waste.
     - Warnings (export allowed): flow above column max; values the export rounds (%B to whole numbers, flow and fraction size to 0.1); a gradient over less than 10 ml ("Steep gradient … the 4 ml mixer smooths gradients shorter than 10 ml"). Errors (export blocked): length ≤ 0, %B outside 0–100, flow ≤ 0, negative fraction size, inlet outside A1–A8, phase shorter than 0.1 ml (0.2 ml when it starts with a %B step).
     - Fraction size (ml), where 0 means no fractions
     - Inlet A (A1–A8, A8 labelled "(sample)")
+    - Injection valve: Load (pump → column), Inject (pump → loop → column), Waste (pump → waste, column bypassed). Default by phase type: Sample application → Inject, Pump wash → Waste, all others → Load.
     - Autozero at start (On/Off toggle)
+    - **Pump wash** phases show other fields after Name and Phase type: "Lines to wash · runs B, A8 … A1" (full width, one checkbox per line B, A1–A8, default B and A1; no line checked is an error "Select at least one line to wash."), "Volume per line (ml)" (default 40), Flow (ml/min, default 10) and the injection valve shown as Waste (not editable). Changing the type to Pump wash sets these defaults, fraction size 0 and Autozero off; %B is left as it is. The phase list meta reads "3 × 40 ml · B, A8, A1".
   - Footer: "Delete phase" (muted outline), spacer, "← Previous phase", "Next phase →" (primary).
 - Toggle buttons: active = ink fill with white text, inactive = white with ink text.
 
 ### Step 4 — Export for PrimeView
 - Description: "ÄKTA prime method dump with the breakpoint table, ready to load with PrimeView.". Button: "Download {name}.txt". The preview shows the exact file.
-- Grid `1.3fr 1fr`: the breakpoint table (sticky header; columns BP, Volume ml, %B, Flow, Fraction, Inlet A, Autozero, with a 6 px phase-color dot per row) and a raw text preview (`#1f1f1e` background, `#e8e8e5` text, monospace 12 px / 1.6).
+- Grid `1.3fr 1fr`: the breakpoint table (sticky header; columns BP, Volume ml, %B, Flow, Fraction, Inlet A, Inj, Autozero, with a 6 px phase-color dot per row) and a raw text preview (`#1f1f1e` background, `#e8e8e5` text, monospace 12 px / 1.6).
 
 ### Methods popover (from the top bar)
 - Anchored right under the button, 440 px wide, `#fff`, border `#cfcfcb`, radius 6, shadow `0 10px 28px rgba(0,0,0,.14)`.
 - Header: "Saved methods", right "Stored in this browser".
 - List (max-height 320, scroll). Each row shows the name (13/600), meta "IMAC · HisTrap HP 5 ml · 6 phases · date", an **Open** button (outline) and × to delete. Empty state: "No saved methods yet. Use Save, or import a file."
-- Footer (`#fafaf9`): "Import .json / .txt" (file picker) on the left, "Export .json" on the right.
+- Footer (`#fafaf9`): "Import .txt" (file picker) on the left.
 
 ---
 
@@ -121,47 +124,52 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
 - **Linked %B edits**: any edit of a phase (drag, keyboard, form) keeps connected gradients attached. When a phase's start %B changes, a gradient phase before it that ended at the old start value moves its end along; when a phase's end %B changes, a gradient phase after it that started at the old end value moves its start along. Isocratic neighbours keep their level (a %B step appears instead), so an edit never cascades through the program.
 
 ## Calculations
-- Phase ml = length × column CV (unit CV) or length (unit ml).
+- Phase ml = length × column CV (unit CV) or length (unit ml). A pump wash runs its length once per checked line: ml = length × number of lines.
+- **Pump wash segments**: a pump wash runs as one segment per checked line in the order B, A8 … A1, each `length` ml at the phase's flow on Waste. Line B runs at 100 %B (inlet as stored, default A1), line An at 0 %B on inlet n. The chart's %B and flow lines, breakpoints and validation (minimum lengths) use the segments; the band, list row and form stay one phase.
 - Phase start volume = sum of previous phase volumes. Phase time = ml / flow. Total time = Σ.
-- Breakpoints follow ÄKTA prime semantics: a breakpoint sets flow, fraction size and inlet from its volume on; %B is interpolated linearly to the next breakpoint; the method ends at the last breakpoint. So: **one breakpoint per phase start** (Autozero = phase setting) and a **final end breakpoint**. Where %B steps between phases, the phase gets an **end breakpoint** at its end volume (its end %B, Autozero = No) and the next phase's start breakpoint follows at **+0.1 ml** (two breakpoints at the same volume don't work on the instrument). Breakpoint values are the file values: volume, flow and fraction size rounded to 0.1, %B to whole numbers.
+- Breakpoints follow ÄKTA prime semantics: a breakpoint sets flow, fraction size, inlet and injection valve from its volume on; %B is interpolated linearly to the next breakpoint; the method ends at the last breakpoint. So: **one breakpoint per phase start** (pump wash: per segment; Autozero = phase setting, first segment only) and a **final end breakpoint**. Where %B steps between phases, the phase gets an **end breakpoint** at its end volume (its end %B, Autozero = No) and the next phase's start breakpoint follows at **+0.1 ml** (two breakpoints at the same volume don't work on the instrument). Breakpoint values are the file values: volume, flow and fraction size rounded to 0.1, %B to whole numbers.
 
 ## Data model
 ```ts
-type PhaseType = 'equil'|'sample'|'wash'|'elution'|'strip';
+type PhaseType = 'equil'|'sample'|'wash'|'elution'|'strip'|'pumpwash';
+type InjectValve = 'Load'|'Inject'|'Waste';
 interface Phase { name:string; type:PhaseType; len:number; unit:'CV'|'ml';
-  b0:number; b1:number; grad:boolean; flow:number; frac:number; inlet:1..8; az:boolean }
+  b0:number; b1:number; grad:boolean; flow:number; frac:number; inlet:1..8; inj:InjectValve; az:boolean;
+  lines?:('B'|'A1'|…|'A8')[] /*pump wash only, wash order B, A8 … A1*/ }
 type ApplicationId = 'imac'|'affinity'|'iex'|'hic'|'sec'|'equil';
 interface Column { id:string; name:string; manufacturer:string; cv:number;
   flow:number|null /*max ml/min; null = vendor gives no value*/; rec:number /*default flow*/;
   p:number /*MPa, lower of packed bed and hardware limit*/; apps:ApplicationId[]; note?:string; custom?:boolean }
 ```
-**Method JSON** (export/import, version 1):
+**Method data** (version 2). Stored as JSON in `localStorage` (`gd.methods`, `gd.current`) and written as the method block of the `.txt` (below); there is no JSON file export or import:
 ```json
-{ "format":"gradientdesk", "version":1, "name":"IMAC_HisTrap5_gradient",
+{ "format":"gradientdesk", "version":2, "name":"IMAC_HisTrap5_gradient",
   "application":"imac", "system":"AKTAprime",
   "column":{"id":"histrap-hp-5-ml","name":"HisTrap HP 5 ml","manufacturer":"Cytiva","cv":5,"flow":20,"rec":5,"p":0.5,"apps":["imac"]},
   "phases":[{"name":"Equilibration","type":"equil","length":5,"unit":"CV","startB":0,"endB":0,
-    "gradient":false,"flow":5,"fraction":0,"inletA":1,"autozero":true}],
+    "gradient":false,"flow":5,"fraction":0,"inletA":1,"injection":"Load","autozero":true}],
   "modified":"2026-10-15T10:00:00.000Z" }
 ```
-On import, the column is matched by id, then by name. If neither matches and CV is given, the column is created as a custom column.
+Version 1 data has no `injection`; on load each phase gets its type's default. On import, the column is matched by id, then by name. If neither matches and CV is given, the column is created as a custom column.
 
 **TXT export**: ÄKTA prime "Method Dump" (AKTAprime V2.02, dump format V1.00). Full format spec: `docs/primeview-format.md`. Byte-exact reference: `tests/golden/sample-imac-gradient.txt`. Code: `src/domain/primeview.ts`.
 - Header credit: `** Created with , GradientDesk v{version} (gradientdesk.xcience.net, github.com/gebauer/GradientDesk)` and `** Created by , {name}` (see `docs/primeview-format.md` §10). Step 4 has a row under the header: "Method no." (64 px number input), "Created by" (240 px text input, placeholder "Your name (optional)"), and the muted note "Written into the file header, saved in this browser."
 - File name `PrimeMeth_NNN.txt` with the method number 1–99 (step 4 field "Method no.", default 1, stored with the current method). PrimeView reads them from `C:\UNICORN\Bin\Prime\`.
 - ASCII, CRLF on every line, starts with an empty line, spaces only. Rows are 62 characters.
-- `Max pressure (kPa)` = column pressure limit in kPa, capped at 1000. `Inj` always `Load`, `Peak` 0, `Eventmark` N.
+- **Method block**: after the breakpoint table, an empty line and a comment block in INI style with the complete method (`docs/primeview-format.md` §11): banner `** GradientDesk method`, then `** [method]` (format, version, name, application), `** [column]` (all column fields) and one `** [phase N]` per phase (the method data field names), each line `** key = value`. Booleans `yes`/`no`, unknown max flow `none`, apps comma-separated; values are escaped to ASCII (`\uXXXX`, `\\`). No timestamp, so the same method always gives the same file. Byte-exact reference: `tests/golden/gradientdesk-imac-method.txt`.
+- `Max pressure (kPa)` = column pressure limit in kPa, capped at 1000. `Inj` = the phase's injection valve (`Load`, `Inject`, `Waste`), `Peak` 0, `Eventmark` N.
 - Export (top bar and step 4) is disabled while the program has errors; the reason is shown. Warnings never block.
 
-**TXT import** (Methods popover accepts `.json` and `.txt`):
+**TXT import** (Methods popover):
+- With a method block whose breakpoints match the file's table, the method is restored completely (name, application, column, phase names, types, units, everything); the column is matched as above. If the table no longer matches the block (edited outside GradientDesk) or the block can't be read, the table is imported as below with a visible message.
 - Only `Method base ml`. Find the header row starting with `Brkp`, map columns by name, read rows that start with a comma. The first volume must be 0.0 and volumes must strictly increase.
-- Each consecutive pair of breakpoints becomes one phase (length in ml, %B from the pair, settings from the first). A 0.1 ml segment that only changes %B (same settings as the phase before, no autozero) is a %B step and is folded into the following phase.
+- Each consecutive pair of breakpoints becomes one phase (length in ml, %B from the pair, settings from the first). A 0.1 ml segment that only changes %B (same settings incl. injection valve as the phase before, no autozero) is a %B step and is folded into the following phase.
 - A `PrimeMeth_NNN.txt` file name sets the method number.
-- Phase type is guessed: inlet 8 or Inj = Inject → sample; %B changes → elution; %B ≥ 99 → strip; first phase → equil; otherwise wash. Phase names are not in the file, so the type name is used.
-- The program replaces the current one; application and column stay, the method name becomes the file name. Inject positions, peak settings and event marks are dropped with a visible message.
+- `Inj` is read into the phase's injection valve. Phase type is guessed: Inj = Waste at constant 0 or 100 %B → pump wash with one line (100 %B → B, 0 %B → A{inlet}), so a pump wash comes back as one phase per line; inlet 8 or Inj = Inject → sample; %B changes → elution; %B ≥ 99 → strip; first phase → equil; otherwise wash. Phase names are not in the file, so the type name is used.
+- Without a method block: the program replaces the current one; application and column stay, the method name becomes the file name. Peak settings and event marks are dropped with a visible message.
 
 ## Application templates
-Lengths depend on the column (`rec` = recommended flow). Code: `src/domain/templates.ts`. Every phase uses `rec` unless stated; elution fractions are 2 ml (1 ml for columns below 5 ml); `grad` is true when start %B ≠ end %B. After loading, the first elution phase is selected (otherwise the first phase). Default method name: `{short}_{column name without non-alphanumerics}`, e.g. `IMAC_HisTrapHP5ml`.
+Lengths depend on the column (`rec` = recommended flow). Code: `src/domain/templates.ts`. Every phase uses `rec` unless stated; the injection valve is the phase type's default (sample phases Inject); elution fractions are 2 ml (1 ml for columns below 5 ml); `grad` is true when start %B ≠ end %B. After loading, the first elution phase is selected (otherwise the first phase). Default method name: `{short}_{column name without non-alphanumerics}`, e.g. `IMAC_HisTrapHP5ml`.
 
 Application cards (name · short · description):
 - General · General · Any column. Equilibration, sample load, wash, linear gradient elution and re-equilibration as a starting point.
@@ -205,7 +213,7 @@ Values are unverified; check them against the vendor datasheets later. A custom 
 - **Borders**: frame `#dcdcd8`, input `#d0d0cc`, button `#cfcfcb`, inner divider `#e4e4e1`, row `#eeeeeb` / `#f0f0ed`
 - **Code block**: background `#1f1f1e`, text `#e8e8e5`
 - **Warning**: line/border `oklch(0.6 0.15 25)`, text `oklch(0.48 0.15 25)`
-- **Phase colors**: `oklch(0.72 0.12 H)` with H = equil 240, sample 300, wash 190, elution 40, strip 95. Band tint uses alpha .12 (selected .30). List tint uses alpha .14 / .32.
+- **Phase colors**: `oklch(0.72 0.12 H)` with H = equil 240, sample 300, wash 190, elution 40, strip 95; pump wash is neutral grey `oklch(0.72 0 0)` (column bypassed). Band tint uses alpha .12 (selected .30). List tint uses alpha .14 / .32.
 - **Type**: "Helvetica Neue", Helvetica, "Segoe UI", sans-serif. Sizes 11 (labels, uppercase, +.05em), 12, 13 (inputs/buttons), 14 (body), 16 (card titles), 20 (step titles), all 400/500/600. Numbers use `font-variant-numeric: tabular-nums`. Monospace: ui-monospace, Menlo, Consolas.
 - **Radius**: 2 (swatches), 4 (inputs/buttons), 5 (step items), 6 (cards/popovers)
 - **Heights**: inputs 32, buttons 32–34, top bar 52

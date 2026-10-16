@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'vitest'
-import { breakpoints, calcProgram, clampFlows, convertLength, maxB, phaseMl, updatePhaseLinked } from '../src/domain/calc'
+import { breakpoints, calcProgram, clampFlows, convertLength, expandPhases, maxB, phaseMl, updatePhaseLinked } from '../src/domain/calc'
+import { retypePatch } from '../src/domain/templates'
 import type { Column, Phase } from '../src/domain/types'
-import { validatePhase } from '../src/domain/validate'
+import { validatePhase, validateProgram } from '../src/domain/validate'
 
 const column: Column = { id: 'c', name: 'C', manufacturer: '', cv: 5, flow: 20, rec: 5, p: 0.5, apps: ['imac'] }
 const phase = (o: Partial<Phase> = {}): Phase => ({
-  name: 'P', type: 'wash', len: 2, unit: 'CV', b0: 0, b1: 0, grad: false, flow: 5, frac: 0, inlet: 1, az: false, ...o,
+  name: 'P', type: 'wash', len: 2, unit: 'CV', b0: 0, b1: 0, grad: false, flow: 5, frac: 0, inlet: 1, inj: 'Load', az: false, ...o,
 })
 
 describe('volumes', () => {
@@ -72,6 +73,15 @@ describe('validation', () => {
     expect(validatePhase(phase({ flow: 25 }), 0, { ...column, flow: null })).toEqual([])
   })
 
+  test('no column max flow check while the injection valve is on Waste', () => {
+    expect(validatePhase(phase({ inj: 'Waste', flow: 25 }), 0, column)).toEqual([])
+    expect(validatePhase(phase({ type: 'pumpwash', inj: 'Waste', lines: ['B'], flow: 25 }), 0, column)).toEqual([])
+  })
+
+  test('a pump wash needs at least one line', () => {
+    expect(validatePhase(phase({ type: 'pumpwash', inj: 'Waste', lines: [] }), 0, column).map((i) => [i.field, i.level])).toEqual([['lines', 'error']])
+  })
+
   test('invalid values are errors', () => {
     const issues = validatePhase(phase({ len: 0, b0: 120, flow: 0, frac: -1, inlet: 9 as Phase['inlet'] }), 2, column)
     expect(issues.map((i) => [i.field, i.level])).toEqual([
@@ -118,5 +128,45 @@ describe('linked %B edits', () => {
     const ph = [phase({ b0: 0, b1: 40, grad: true }), phase({ b0: 50, b1: 50 })]
     expect(updatePhaseLinked(ph, 1, { b0: 70, b1: 70 })[0].b1).toBe(40)
     expect(updatePhaseLinked(tail(), 1, { len: 9, flow: 2 })).toEqual([tail()[0], { ...tail()[1], len: 9, flow: 2 }, tail()[2]])
+  })
+})
+
+describe('pump wash', () => {
+  const wash = (o: Partial<Phase> = {}) => phase({ name: 'Pump wash', type: 'pumpwash', len: 40, unit: 'ml', flow: 10, inj: 'Waste', lines: ['A1', 'B', 'A8'], ...o })
+
+  test('runs one segment per line in the order B, A8 … A1', () => {
+    expect(expandPhases([phase(), wash()]).map((s) => [s.src, s.p.lines, s.p.b0, s.p.inlet])).toEqual([
+      [0, undefined, 0, 1], [1, ['B'], 100, 1], [1, ['A8'], 0, 8], [1, ['A1'], 0, 1],
+    ])
+  })
+
+  test('volume and time count every line', () => {
+    const c = calcProgram([wash()], column)
+    expect(c.total).toBe(120)
+    expect(c.time).toBe(12)
+    expect(c.phases[0]).toMatchObject({ b0: 100, b1: 0 })
+  })
+
+  test('breakpoints: B, then A8 after a %B step, then A1, all on Waste', () => {
+    const bps = breakpoints([wash()], column)
+    expect(bps.map((b) => [b.volume, b.conc, b.inlet, b.flow, b.inj, b.phase])).toEqual([
+      [0, 100, 1, 10, 'Waste', 0], [40, 100, 1, 10, 'Waste', 0], [40.1, 0, 8, 10, 'Waste', 0], [80, 0, 1, 10, 'Waste', 0], [120, 0, 1, 10, 'Waste', 0],
+    ])
+  })
+
+  test('each line must be long enough for the file', () => {
+    const issues = validateProgram([wash({ len: 0.1 })], column)
+    expect(issues.map((i) => [i.field, i.level])).toEqual([['len', 'error']])
+  })
+
+  test('changing the column keeps the pump wash flow', () => {
+    expect(clampFlows([wash({ flow: 30 })], column)[0].flow).toBe(30)
+  })
+
+  test('changing the type to pump wash sets its defaults; changing back drops the lines', () => {
+    const p = phase({ b0: 5, b1: 5, frac: 2, az: true })
+    const w = { ...p, ...retypePatch(p, 'pumpwash') }
+    expect(w).toMatchObject({ type: 'pumpwash', lines: ['B', 'A1'], len: 40, unit: 'ml', flow: 10, frac: 0, inj: 'Waste', az: false, b0: 5 })
+    expect({ ...w, ...retypePatch(w, 'sample') }).toMatchObject({ type: 'sample', inj: 'Inject', lines: undefined })
   })
 })

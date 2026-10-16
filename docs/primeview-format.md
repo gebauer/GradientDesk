@@ -92,7 +92,7 @@ Ten fields, each introduced by a comma, in the order below. Spaces around a valu
 | 4 | Flow | 6 | decimal, 1 place | ≥ 0 | flow rate, ml/min |
 | 5 | Frac | 7 | decimal, 1 place | ≥ 0; `0.0` = off | fraction size, ml |
 | 6 | Buff | 5 | integer | 1–8 | buffer valve position |
-| 7 | Inj | 7 | keyword | `Load`, `Inject` | injection valve position |
+| 7 | Inj | 7 | keyword | `Load`, `Inject`, `Waste` | injection valve position |
 | 8 | Peak | 7 | integer | ≥ 0; `0` = off | peak fractionation threshold, mAU/min |
 | 9 | Autozero | 9 | flag | `Y`, `N` | UV autozero at this breakpoint |
 | 10 | Eventmark | – | flag | `Y`, `N` | set event mark |
@@ -125,7 +125,7 @@ Readers don't depend on any of the layout details above, only on the line types 
 
 1. `Brkp` starts at 1 and increases by 1.
 2. First `Volume` = `0.0`; `Volume` strictly increasing. Two breakpoints at the same volume do not work on the instrument.
-3. `Conc` 0–100, `Buff` 1–8, `Inj` ∈ {`Load`, `Inject`}, flags ∈ {`Y`, `N`}.
+3. `Conc` 0–100, `Buff` 1–8, `Inj` ∈ {`Load`, `Inject`, `Waste`}, flags ∈ {`Y`, `N`}.
 4. Canonical layout only: a value must not exceed its field width minus 1 (e.g. `Volume` ≤ 8 characters).
 
 ---
@@ -141,7 +141,7 @@ Readers don't depend on any of the layout details above, only on the line types 
 
 - %B steps: a step from phase A to phase B is written as an end breakpoint of A at A's end volume (A's end %B, A's settings), followed by B's start breakpoint at **+0.1 ml** (B's %B and settings). Phase volumes don't shift; B just starts 0.1 ml later in the file.
 - Volumes are rounded to 0.1 ml at phase boundaries. Each phase must be at least 0.1 ml after rounding, and at least 0.2 ml when it starts with a %B step.
-- On import, a 0.1 ml segment that only changes %B (same flow, fraction size and inlet as the phase before, no autozero, no injection) is folded into the following phase, so export → import → export is byte-identical.
+- On import, a 0.1 ml segment that only changes %B (same flow, fraction size, inlet and injection valve as the phase before, no autozero) is folded into the following phase, so export → import → export is byte-identical.
 - `Max pressure (kPa)` is written as the column's pressure limit in kPa, capped at 1000 (pending owner confirmation; the default in PrimeView files is 100).
 - Credit lines: GradientDesk adds two comment lines inside the header block, before the closing `**` line:
   ```
@@ -149,4 +149,61 @@ Readers don't depend on any of the layout details above, only on the line types 
   ** Created by       , <name>
   ```
   The name comes from the "Created by" field (per browser, may be empty: the line then ends with the comma, as a spot to fill in by hand). Both are converted to ASCII (ä → ae, ß → ss, accents dropped, anything else → `?`). Comment lines are ignored by readers, so they don't affect import. Reference: `tests/golden/gradientdesk-imac-gradient.txt`; without these lines the output equals the PrimeView sample byte for byte.
-- `Inj` is always written as `Load`; `Peak` 0; `Eventmark` N. On import, `Inject`, peak thresholds and event marks are dropped with a message.
+- `Inj` is written from the phase's injection valve (`Load`, `Inject`, `Waste`; default by phase type: sample → `Inject`, pump wash → `Waste`, others → `Load`) and read back on import; an unknown value reads as `Load`. `Peak` 0; `Eventmark` N. On import, peak thresholds and event marks are dropped with a message.
+- Pump wash: one segment per line in the order B, A8 … A1, each written like a phase on `Waste` (B at 100 %B, An at 0 %B on `Buff` n). The step from B to A8 follows the %B step rule above (end breakpoint, next start at +0.1 ml). On import, a `Waste` segment at constant 100 or 0 %B becomes a single-line pump wash.
+- The keyword `Waste` is assumed from the instrument's valve positions; no PrimeView dump with `Waste` has been checked yet.
+
+---
+
+## 11. GradientDesk method block
+
+GradientDesk appends the complete method as comment lines after the last breakpoint row, so a re-import restores everything the breakpoint table can't hold (method name, application, column, phase names, types and units). Code: `src/domain/methodTxt.ts`; byte-exact reference: `tests/golden/gradientdesk-imac-method.txt`.
+
+```
+<last breakpoint row>
+
+*****************************************************************
+** GradientDesk method
+** Everything GradientDesk needs to restore this method on import.
+*****************************************************************
+** [method]
+** format = gradientdesk
+** version = 2
+** name = IMAC_HisTrapHP5ml
+** application = imac
+**
+** [column]
+** id = histrap-hp-5-ml
+** name = HisTrap HP 5 ml
+** manufacturer = Cytiva
+** cv = 5
+** flow = 20
+** rec = 5
+** p = 0.5
+** apps = imac
+**
+** [phase 1]
+** name = Equilibration
+** type = equil
+** length = 5
+** unit = CV
+** startB = 0
+** endB = 0
+** gradient = no
+** flow = 5
+** fraction = 0
+** inletA = 1
+** injection = Load
+** autozero = yes
+**
+** [phase 2]
+...
+*****************************************************************
+```
+
+- Every line starts with `**`, so it is a comment line (§2). The block starts at the line `** GradientDesk method`; sections are `** [method]`, `** [column]`, `** [phase N]`; entries are `** key = value`, split at the first `=`, spaces around key and value are not significant.
+- Keys are the method data field names (docs/SPEC.md "Method data"); pump wash phases add `lines` (comma-separated, wash order, e.g. `** lines = B, A8, A1`); the column's `note` and `custom` are written only when set. Numbers as written by JavaScript (`String(n)`), booleans `yes` / `no`, unknown max flow `none`, `apps` comma-separated.
+- Values are ASCII: `\` is written as `\\`, any other character outside 0x20–0x7E as `\uXXXX` (UTF-16 code unit), and leading or trailing spaces as `\u0020`.
+- No timestamp: the same method always gives the same file.
+- Import: the block is used only when the breakpoints it produces equal the file's rows (compared without spaces). Otherwise, or when the block can't be read, the table is imported (§10) with a message. A file without a block is imported from the table.
+- Open point: §3 only shows comments before the table. Whether PrimeView and the instrument accept comment lines after the last breakpoint row still has to be confirmed.

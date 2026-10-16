@@ -8,7 +8,7 @@ const histrap5 = SEED_COLUMNS.find((c) => c.id === 'histrap-hp-5-ml') as Column
 
 const method = (o: Partial<Method> = {}): Method => ({
   format: 'gradientdesk',
-  version: 1,
+  version: 2,
   name: 'IMAC_HisTrapHP5ml',
   application: 'imac',
   system: 'AKTAprime',
@@ -38,8 +38,13 @@ describe('JSON round trip', () => {
     const f = toMethodFile(method())
     expect(f.phases[3]).toEqual({
       name: 'Elution', type: 'elution', length: 20, unit: 'CV', startB: 5, endB: 100,
-      gradient: true, flow: 5, fraction: 2, inletA: 1, autozero: true,
+      gradient: true, flow: 5, fraction: 2, inletA: 1, injection: 'Load', autozero: true,
     })
+  })
+
+  test('keeps the injection valve of every phase', () => {
+    const phases = method().phases.map((p, i) => ({ ...p, inj: (['Load', 'Inject', 'Waste'] as const)[i % 3] }))
+    expect(fromJson(toJson(method({ phases }))).phases.map((p) => p.inj)).toEqual(phases.map((p) => p.inj))
   })
 })
 
@@ -49,7 +54,7 @@ describe('import', () => {
   test('rejects broken input with a readable message', () => {
     expect(() => fromJson('{nope')).toThrow('not valid JSON')
     expect(() => fromJson('{"format":"other"}')).toThrow('not a GradientDesk method file')
-    expect(() => fromJson(file({ version: 2 }))).toThrow('newer version')
+    expect(() => fromJson(file({ version: 3 }))).toThrow('newer version')
     expect(() => fromJson(file({ phases: [] }))).toThrow('no phases')
     expect(() => fromJson(file({ column: undefined }))).toThrow(MethodImportError)
   })
@@ -57,8 +62,18 @@ describe('import', () => {
   test('fills missing or odd phase fields with safe values', () => {
     const m = fromJson(file({ phases: [{ length: '3', unit: 'CV', startB: 10, endB: 40, inletA: 12, type: 'bogus' }] }))
     expect(m.phases[0]).toEqual({
-      name: 'Phase', type: 'wash', len: 3, unit: 'CV', b0: 10, b1: 40, grad: true, flow: 1, frac: 0, inlet: 8, az: false,
+      name: 'Phase', type: 'wash', len: 3, unit: 'CV', b0: 10, b1: 40, grad: true, flow: 1, frac: 0, inlet: 8, inj: 'Load', az: false,
     })
+  })
+
+  test('migrates version 1: the injection valve follows the phase type', () => {
+    const v1 = toMethodFile(method())
+    const phases = [...v1.phases, { ...v1.phases[0], type: 'pumpwash' }].map((p) => ({ ...p, injection: undefined }))
+    const m = fromJson(JSON.stringify({ ...v1, version: 1, phases }))
+    expect(m.version).toBe(2)
+    expect(m.phases.map((p) => [p.type, p.inj])).toEqual([
+      ['equil', 'Load'], ['sample', 'Inject'], ['wash', 'Load'], ['elution', 'Load'], ['strip', 'Load'], ['equil', 'Load'], ['pumpwash', 'Waste'],
+    ])
   })
 
   test('unknown application falls back to General', () => {

@@ -17,7 +17,8 @@ src/
     templates.ts      application templates (imac, iex, sec, equil)
     calc.ts           phaseVolumes(), totals(), breakpoints()
     primeview.ts      toPrimeViewTxt(), fromPrimeViewTxt()
-    methodJson.ts     toJson(), fromJson() + version migration
+    methodTxt.ts      toMethodTxt(), fromMethodTxt(): dump + method block, full re-import
+    methodJson.ts     method data (localStorage JSON) + version migration
     validate.ts       per-phase warnings and errors
   storage/
     local.ts          load/save for gd.customColumns, gd.methods, gd.current
@@ -39,8 +40,9 @@ src/
     form/             Field, NumberInput, Toggle, Segmented, Select
   styles/tokens.css   CSS variables from SPEC.md "Design Tokens"
 tests/
-  golden/             *.json method → *.txt expected output
+  golden/             PrimeView dumps and GradientDesk reference .txt files
   primeview.test.ts
+  methodTxt.test.ts
   methodJson.test.ts
   calc.test.ts
 ```
@@ -50,7 +52,7 @@ tests/
 2. **Export/Import**: `toPrimeViewTxt` (tab-separated, CRLF) and `fromPrimeViewTxt`, plus golden tests for all 4 templates. JSON round-trip tests.
 3. **Shell + steps 1, 2, 4**: static layout per SPEC.md, wired to the store.
 4. **Step 3**: phase list and form, then the SVG chart, then handle dragging (pointer events, touch) and keyboard control.
-5. **Persistence**: autosave of the current method, library popover, custom columns, file import (JSON/TXT) with error messages.
+5. **Persistence**: autosave of the current method, library popover, custom columns, file import (TXT) with error messages.
 6. **Polish**: hover/focus states, validation warnings, a11y pass, test on Chrome/Edge/Firefox at 1280–1920 px.
 7. **Format alignment**: done with the first real sample. Add more golden files (step gradients, loop injection) when samples are available.
 
@@ -59,7 +61,7 @@ tests/
 - Dragging a handle updates the length/%B in the form and the breakpoint table live, and the axis does not jump during the drag.
 - Flow above the column max shows the red border and warning text.
 - Save → reload → Methods → Open restores the identical method.
-- Export .json → Import gives an identical method. Export .txt → Import → Export .txt gives a byte-identical file.
+- Export .txt → Import gives an identical method (from the method block) and Export .txt again gives a byte-identical file.
 - Custom columns survive reload and can be deleted.
 - `npm test` and `npm run lint` are clean. `npm run build` produces a working static site.
 
@@ -81,6 +83,6 @@ Note: data lives in each user's browser (`localStorage`), so redeploys never tou
 
 ## Open points
 - Resolved: PrimeView method dump format, from a real sample (`tests/golden/sample-imac-gradient.txt`).
-- To confirm on the instrument: two breakpoints at the same volume for %B steps; `Max pressure (kPa)` = column limit; injection valve (`Inj`) for loop injection, e.g. SEC.
+- To confirm on the instrument: two breakpoints at the same volume for %B steps; `Max pressure (kPa)` = column limit; injection valve (`Inj`) for loop injection, e.g. SEC, and the `Waste` keyword for pump wash; comment lines after the breakpoint table (GradientDesk method block).
 - Seed column specs are placeholders; verify against datasheets later. The data structure is final.
 - Resolved: ÄKTA prime and prime plus do not differ.

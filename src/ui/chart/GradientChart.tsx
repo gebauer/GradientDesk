@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import type { ProgramCalc } from '../../domain/calc'
+import { calcProgram, expandPhases, type ProgramCalc } from '../../domain/calc'
 import type { Column, Phase } from '../../domain/types'
 import type { Action } from '../../state/store'
 import { fmt } from '../format'
@@ -86,8 +86,13 @@ export function GradientChart({ phases, calc, column, sel, dragDomain, dispatch,
   })
 
   const x1 = W - PAD.right
-  const line = calc.phases.map((c) => `${g.x(c.v0)},${g.y(c.b0)} ${g.x(c.v1)},${g.y(c.b1)}`).join(' ')
-  const flowLine = calc.phases.map((c, i) => `${g.x(c.v0)},${yf(phases[i].flow)} ${g.x(c.v1)},${yf(phases[i].flow)}`).join(' ')
+  // Lines follow the segments as they run, so a pump wash shows each line's %B.
+  const segs = expandPhases(phases).map((s) => s.p)
+  const segCalc = calcProgram(segs, column)
+  const line = segCalc.phases.map((c) => `${g.x(c.v0)},${g.y(c.b0)} ${g.x(c.v1)},${g.y(c.b1)}`).join(' ')
+  const flowLine = segCalc.phases.map((c, i) => `${g.x(c.v0)},${yf(segs[i].flow)} ${g.x(c.v1)},${yf(segs[i].flow)}`).join(' ')
+  /** Pump wash %B comes from its lines; it is edited in the form, not dragged. */
+  const draggable = (p: Phase) => p.type !== 'pumpwash'
 
   return (
     <div className="card chart-card">
@@ -169,7 +174,7 @@ export function GradientChart({ phases, calc, column, sel, dragDomain, dispatch,
           <polyline points={flowLine} fill="none" stroke="var(--chart-flow)" strokeDasharray="4 3" strokeWidth={1.5} pointerEvents="none" />
           <polyline points={line} fill="none" stroke="var(--ink)" strokeWidth={2} pointerEvents="none" />
           {calc.phases.map((c, i) =>
-            phases[i].grad ? null : (
+            phases[i].grad || !draggable(phases[i]) ? null : (
               <line
                 key={i}
                 className="level-line"
@@ -189,6 +194,7 @@ export function GradientChart({ phases, calc, column, sel, dragDomain, dispatch,
           )}
           {calc.phases.map((c, i) => {
             const p = phases[i]
+            if (!draggable(p)) return null
             return (
               <g
                 key={i}

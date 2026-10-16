@@ -1,10 +1,16 @@
 export type ApplicationId = 'general' | 'preloaded' | 'imac' | 'affinity' | 'iex' | 'hic' | 'sec' | 'equil'
 
-export type PhaseType = 'equil' | 'sample' | 'wash' | 'elution' | 'strip'
+export type PhaseType = 'equil' | 'sample' | 'wash' | 'elution' | 'strip' | 'pumpwash'
 
 export type LengthUnit = 'CV' | 'ml'
 
 export type Inlet = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
+
+/** Injection valve position: Load (pump → column), Inject (pump → loop → column), Waste (pump → waste, column bypassed). */
+export type InjectValve = 'Load' | 'Inject' | 'Waste'
+
+/** Pump lines a pump wash can rinse: buffer B and inlets A1–A8. */
+export type PumpLine = 'B' | 'A1' | 'A2' | 'A3' | 'A4' | 'A5' | 'A6' | 'A7' | 'A8'
 
 export interface Phase {
   name: string
@@ -21,8 +27,14 @@ export interface Phase {
   /** Fraction size in ml; 0 = no fractions. */
   frac: number
   inlet: Inlet
+  inj: InjectValve
   /** Autozero at phase start. */
   az: boolean
+  /**
+   * Pump wash only: the lines to rinse, in wash order (B, A8 … A1). The phase runs `len` ml per line;
+   * %B and inlet come from the line (B: 100 %B on `inlet`, An: 0 %B on inlet n).
+   */
+  lines?: PumpLine[]
 }
 
 export interface Column {
@@ -53,6 +65,7 @@ export interface Breakpoint {
   /** ml; 0 = no fractions */
   frac: number
   inlet: Inlet
+  inj: InjectValve
   az: boolean
   /** Index of the phase this breakpoint belongs to. */
   phase: number
@@ -60,7 +73,7 @@ export interface Breakpoint {
 
 export interface Method {
   format: 'gradientdesk'
-  version: 1
+  version: 2
   name: string
   application: ApplicationId
   system: 'AKTAprime'

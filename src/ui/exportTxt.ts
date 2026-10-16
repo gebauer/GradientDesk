@@ -1,11 +1,13 @@
-import { primeFileName, toPrimeViewTxt } from '../domain/primeview'
+import { toMethodTxt } from '../domain/methodTxt'
+import { primeFileName } from '../domain/primeview'
 import { validateProgram } from '../domain/validate'
-import { currentColumn, type State } from '../state/store'
+import { currentColumn, currentMethod, type State } from '../state/store'
 import { downloadText } from './download'
 
 export const txtFileName = (s: State) => primeFileName(s.slot)
 
-export const methodTxt = (s: State) => toPrimeViewTxt(s.phases, currentColumn(s), { version: __APP_VERSION__, author: s.author })
+/** The file needs no timestamp, so the same method always gives the same file. */
+export const methodTxt = (s: State) => toMethodTxt(currentMethod(s, new Date(0).toISOString()), { version: __APP_VERSION__, author: s.author })
 
 /** Why the .txt can't be exported, or null. Warnings never block. */
 export function exportBlocker(s: State): string | null {

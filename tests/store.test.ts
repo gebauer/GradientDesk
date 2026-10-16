@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from 'vitest'
 import { currentColumn, currentMethod, initialState, reducer, type Action, type State } from '../src/state/store'
 import * as storage from '../src/storage/local'
+import { fromMethodTxt, toMethodTxt } from '../src/domain/methodTxt'
 
 const run = (s: State, ...actions: Action[]) => actions.reduce(reducer, s)
 const NOW = '2026-10-15T10:00:00.000Z'
@@ -111,6 +112,18 @@ describe('library', () => {
     const r = run(s, { type: 'openMethod', method: m, message: '' })
     expect(r.customColumns.map((c) => c.id)).toEqual(['lab-col'])
     expect(currentColumn(r).custom).toBe(true)
+  })
+
+  test('importing a .txt with a method block restores the method and the method number', () => {
+    const s = run(initialState(), { type: 'loadApp', app: 'sec' }, { type: 'setMethodName', name: 'SEC run' })
+    const txt = toMethodTxt(currentMethod(s, NOW))
+    const result = fromMethodTxt(txt)
+    if (result.kind !== 'method') throw new Error('expected the method block')
+    const r = run(initialState(), { type: 'loadApp', app: 'imac' }, { type: 'openMethod', method: result.method, message: '', slot: 7 })
+    expect(r.methodName).toBe('SEC run')
+    expect(r.app).toBe('sec')
+    expect(r.phases).toEqual(s.phases)
+    expect(r.slot).toBe(7)
   })
 
   test('custom columns survive a reload', () => {

@@ -53,6 +53,7 @@ export function ExportStep({ state, dispatch }: { state: State; dispatch: (a: Ac
             <div role="columnheader" className="num">Flow</div>
             <div role="columnheader" className="num">Fraction</div>
             <div role="columnheader" className="num">Inlet A</div>
+            <div role="columnheader" className="num">Inj</div>
             <div role="columnheader" className="num">Autozero</div>
           </div>
           {rows.map((r, i) => (
@@ -66,6 +67,7 @@ export function ExportStep({ state, dispatch }: { state: State; dispatch: (a: Ac
               <div role="cell" className="num">{fixed(r.flow)}</div>
               <div role="cell" className="num">{fixed(r.frac)}</div>
               <div role="cell" className="num">A{r.inlet}</div>
+              <div role="cell" className="num">{r.inj}</div>
               <div role="cell" className="num">{r.az ? 'Yes' : 'No'}</div>
             </div>
           ))}

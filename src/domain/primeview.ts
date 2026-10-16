@@ -2,7 +2,7 @@ import { breakpoints } from './calc'
 import { SYSTEM_MAX_PRESSURE } from './columns'
 import { MethodImportError } from './methodJson'
 import { PHASE_TYPES } from './templates'
-import type { Column, Inlet, Phase, PhaseType } from './types'
+import type { Column, Inlet, InjectValve, Phase, PhaseType, PumpLine } from './types'
 
 /**
  * ÄKTA prime "Method Dump" text file (AKTAprime V2.02, dump format V1.00), as written by PrimeView.
@@ -113,7 +113,7 @@ export function toPrimeViewTxt(phases: readonly Phase[], column: Column, info: E
         b.flow.toFixed(1),
         b.frac.toFixed(1),
         String(b.inlet),
-        'Load',
+        b.inj,
         '0',
         b.az ? 'Y' : 'N',
         'N',
@@ -135,7 +135,7 @@ interface Row {
   flow: number
   frac: number
   inlet: Inlet
-  inject: boolean
+  inj: InjectValve
   peak: number
   az: boolean
   mark: boolean
@@ -144,11 +144,25 @@ interface Row {
 const typeName = (t: PhaseType) => PHASE_TYPES.find((x) => x.id === t)?.name ?? t
 const round1 = (x: number) => Math.round(x * 10) / 10
 
+/** A Waste segment at constant 100 %B rinses line B, at 0 %B inlet An; anything else on Waste stays a normal phase. */
+function pumpLine(r: Row, b1: number): PumpLine | null {
+  if (r.inj !== 'Waste' || r.conc !== b1) return null
+  return r.conc === 100 ? 'B' : r.conc === 0 ? (`A${r.inlet}` as PumpLine) : null
+}
+
 function guessType(r: Row, b1: number, first: boolean): PhaseType {
-  if (r.inlet === 8 || r.inject) return 'sample'
+  if (pumpLine(r, b1)) return 'pumpwash'
+  if (r.inlet === 8 || r.inj === 'Inject') return 'sample'
   if (r.conc !== b1) return 'elution'
   if (r.conc >= 99) return 'strip'
   return first ? 'equil' : 'wash'
+}
+
+/** Inj keyword; anything unknown (or a missing column) reads as Load. */
+function readInj(s: string): InjectValve {
+  if (/^inj/i.test(s)) return 'Inject'
+  if (/^was/i.test(s)) return 'Waste'
+  return 'Load'
 }
 
 /** Parses a method dump into phases (lengths in ml). Throws MethodImportError with a user-facing message. */
@@ -186,7 +200,7 @@ export function fromPrimeViewTxt(text: string): PrimeViewImport {
         flow: num(idx.flow, 1),
         frac: num(idx.frac, 0),
         inlet: Math.min(8, Math.max(1, inlet)) as Inlet,
-        inject: /^inj/i.test(get(idx.inj)),
+        inj: readInj(get(idx.inj)),
         peak: num(idx.peak, 0),
         az: /^y/i.test(get(idx.az)),
         mark: /^y/i.test(get(idx.mark)),
@@ -214,16 +228,17 @@ export function fromPrimeViewTxt(text: string): PrimeViewImport {
       b.v - a.v <= 0.1 + 1e-9 &&
       a.conc !== b.conc &&
       !a.az &&
-      !a.inject &&
       a.conc === prev.b1 &&
       a.flow === prev.flow &&
       a.frac === prev.frac &&
-      a.inlet === prev.inlet
+      a.inlet === prev.inlet &&
+      a.inj === prev.inj
     if (isStep) {
       carry = a.v
       continue
     }
     const type = guessType(a, b.conc, phases.length === 0)
+    const line = pumpLine(a, b.conc)
     phases.push({
       name: typeName(type),
       type,
@@ -235,13 +250,14 @@ export function fromPrimeViewTxt(text: string): PrimeViewImport {
       flow: a.flow,
       frac: a.frac,
       inlet: a.inlet,
+      inj: a.inj,
       az: a.az,
+      ...(line ? { lines: [line] } : {}),
     })
     carry = null
   }
 
   const warnings: string[] = []
-  if (rows.some((r) => r.inject)) warnings.push('Injection valve positions (Inj) were not imported.')
   if (rows.some((r) => r.peak !== 0)) warnings.push('Peak fractionation settings were not imported.')
   if (rows.some((r) => r.mark)) warnings.push('Event marks were not imported.')
   return { phases, warnings }

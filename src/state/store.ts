@@ -54,7 +54,7 @@ export type Action =
   | { type: 'dragEnd' }
   | { type: 'save'; now: string }
   | { type: 'deleteMethod'; index: number }
-  | { type: 'openMethod'; method: Method; message: string }
+  | { type: 'openMethod'; method: Method; message: string; slot?: number | null }
   | { type: 'importPhases'; phases: Phase[]; name: string; slot: number | null; status: Status }
   | { type: 'toggleMethods' }
   | { type: 'closeMethods' }
@@ -70,7 +70,7 @@ export function currentColumn(s: Pick<State, 'customColumns' | 'colId' | 'app'>)
 export function currentMethod(s: State, now: string): Method {
   return {
     format: 'gradientdesk',
-    version: 1,
+    version: 2,
     name: s.methodName,
     application: s.app,
     system: 'AKTAprime',
@@ -161,6 +161,7 @@ export function reducer(s: State, a: Action): State {
         phases: a.method.phases,
         sel: defaultSelection(a.method.phases),
         methodName: a.method.name,
+        slot: a.slot ?? s.slot,
         step: 3,
         showMethods: false,
         status: { text: a.message, sticky: false },

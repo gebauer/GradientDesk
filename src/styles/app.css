@@ -804,6 +804,65 @@ select.input {
   gap: 6px;
 }
 
+.span-4 {
+  grid-column: 1 / -1;
+}
+
+.line-set {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.line-set legend {
+  padding: 0;
+  margin-bottom: 5px;
+}
+
+.line-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.line-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.line-choice input {
+  margin: 0;
+  accent-color: var(--ink);
+}
+
+.line-choice input:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.line-set[aria-invalid] .line-choice {
+  border-color: var(--warn-line);
+}
+
+.input-static {
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+  background: var(--canvas);
+}
+
 .phase-form-foot {
   margin-top: auto;
   display: flex;
@@ -827,7 +886,7 @@ select.input {
 
 .bp-grid {
   display: grid;
-  grid-template-columns: 50px repeat(6, minmax(0, 1fr));
+  grid-template-columns: 50px repeat(7, minmax(0, 1fr));
   align-items: center;
 }
 

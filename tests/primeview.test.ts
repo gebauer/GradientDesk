@@ -11,13 +11,13 @@ import type { Column, Phase } from '../src/domain/types'
 const golden = (name: string) => readFileSync(resolve(process.cwd(), 'tests/golden', name), 'utf8')
 
 const P = (o: Partial<Phase>): Phase => ({
-  name: 'P', type: 'wash', len: 1, unit: 'ml', b0: 0, b1: 0, grad: false, flow: 1, frac: 0, inlet: 1, az: false, ...o,
+  name: 'P', type: 'wash', len: 1, unit: 'ml', b0: 0, b1: 0, grad: false, flow: 1, frac: 0, inlet: 1, inj: 'Load', az: false, ...o,
 })
 
 /** The method behind tests/golden/sample-imac-gradient.txt. */
 const samplePhases: Phase[] = [
   P({ name: 'Equilibration', type: 'equil', len: 2 }),
-  P({ name: 'Sample application', type: 'sample', len: 15, inlet: 8, az: true }),
+  P({ name: 'Sample application', type: 'sample', len: 15, inlet: 8, inj: 'Load', az: true }),
   P({ name: 'Wash', type: 'wash', len: 14 }),
   P({ name: 'Elution', type: 'elution', len: 70, b1: 100, grad: true, frac: 1.5 }),
 ]
@@ -88,6 +88,14 @@ describe('export', () => {
     expect(maxPressureKpa({ ...lowPressureColumn, p: 4 })).toBe(1000)
   })
 
+  test('writes the injection valve of each breakpoint', () => {
+    const rows = toPrimeViewTxt([P({ type: 'pumpwash', inj: 'Waste', lines: ['A1'] }), P({ type: 'sample', inj: 'Inject' }), P({})], lowPressureColumn)
+      .split('\r\n')
+      .filter((l) => l.startsWith(','))
+    expect(rows.map((l) => l.split(',')[7].trim())).toEqual(['Waste', 'Inject', 'Load', 'Load'])
+    expect(rows.every((l) => l.length === 62)).toBe(true)
+  })
+
   test('rounds %B to whole numbers and flow to 0.1', () => {
     const txt = toPrimeViewTxt([P({ len: 10, b0: 12.6, b1: 12.6, flow: 0.25 })], lowPressureColumn)
     expect(txt).toContain(',1   ,0.0     ,13  ,0.3  ,0.0   ,1   ,Load  ,0     ,N       ,N')
@@ -145,6 +153,14 @@ describe('import', () => {
     expect(phases.map((p) => [p.len, p.b0, p.b1])).toEqual([[25, 0, 0], [25, 0, 0], [50, 5, 5], [100, 5, 100], [25, 100, 100], [25, 0, 0]])
   })
 
+  test('a pump wash survives export → import → export, one phase per line', () => {
+    const wash = P({ name: 'Pump wash', type: 'pumpwash', len: 40, flow: 10, inj: 'Waste', lines: ['B', 'A8', 'A1'] })
+    const txt = toPrimeViewTxt([wash, ...samplePhases], lowPressureColumn)
+    const back = fromPrimeViewTxt(txt).phases
+    expect(back.slice(0, 3).map((p) => [p.type, p.lines, p.len])).toEqual([['pumpwash', ['B'], 40], ['pumpwash', ['A8'], 40], ['pumpwash', ['A1'], 40]])
+    expect(toPrimeViewTxt(back, lowPressureColumn)).toBe(txt)
+  })
+
   test('every template on every listed column survives export → import → export', () => {
     for (const app of APPLICATIONS) {
       for (const c of columnsFor(app.id, SEED_COLUMNS)) {
@@ -157,7 +173,16 @@ describe('import', () => {
 
   test('reports what it drops', () => {
     const txt = golden('sample-imac-gradient.txt').replace(',8   ,Load  ,0     ,Y       ,N', ',8   ,Inject,5     ,Y       ,Y')
-    expect(fromPrimeViewTxt(txt).warnings).toHaveLength(3)
+    expect(fromPrimeViewTxt(txt).warnings).toHaveLength(2)
+  })
+
+  test('reads the injection valve and guesses pump wash from Waste', () => {
+    const txt = golden('sample-imac-gradient.txt')
+      .replace(',1   ,0.0     ,0   ,1.0  ,0.0   ,1   ,Load  ', ',1   ,0.0     ,0   ,1.0  ,0.0   ,1   ,Waste ')
+      .replace(',8   ,Load  ', ',8   ,Inject')
+    const { phases, warnings } = fromPrimeViewTxt(txt)
+    expect(phases.map((p) => [p.type, p.inj])).toEqual([['pumpwash', 'Waste'], ['sample', 'Inject'], ['wash', 'Load'], ['elution', 'Load']])
+    expect(warnings).toEqual([])
   })
 
   test('rejects files it cannot read', () => {

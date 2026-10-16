@@ -1,4 +1,4 @@
-import { fromJson, toMethodFile, type MethodFileV1 } from '../domain/methodJson'
+import { fromJson, toMethodFile, type MethodFile } from '../domain/methodJson'
 import type { Column, Method } from '../domain/types'
 
 /** localStorage keys (docs/SPEC.md). Values are wrapped as { version, ... } for migrations. */
@@ -67,7 +67,7 @@ export function loadMethods(): Method[] {
 }
 
 export function saveMethods(methods: readonly Method[]): void {
-  write<MethodFileV1[]>(KEYS.methods, methods.map(toMethodFile))
+  write<MethodFile[]>(KEYS.methods, methods.map(toMethodFile))
 }
 
 export function loadCurrent(): CurrentDoc | null {

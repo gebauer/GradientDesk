@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react'
-import { fromJson, MethodImportError, toJson } from '../domain/methodJson'
-import { fromPrimeViewTxt, slotFromFileName } from '../domain/primeview'
+import { MethodImportError } from '../domain/methodJson'
+import { fromMethodTxt } from '../domain/methodTxt'
+import { slotFromFileName } from '../domain/primeview'
 import { APPLICATIONS } from '../domain/templates'
-import { currentMethod, type Action, type State } from '../state/store'
-import { downloadText } from './download'
+import { type Action, type State } from '../state/store'
 
 export function MethodsPopover({ state, dispatch, onClose }: { state: State; dispatch: (a: Action) => void; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -28,23 +28,19 @@ export function MethodsPopover({ state, dispatch, onClose }: { state: State; dis
     input.value = ''
     if (!file) return
     try {
-      const text = await file.text()
-      if (/\.json$/i.test(file.name) || text.trimStart().startsWith('{')) {
-        dispatch({ type: 'openMethod', method: fromJson(text), message: `Imported ${file.name}` })
+      const result = fromMethodTxt(await file.text())
+      const slot = slotFromFileName(file.name)
+      const message = [`Imported ${file.name}`, ...result.warnings].join(' ')
+      if (result.kind === 'method') {
+        dispatch({ type: 'openMethod', method: result.method, message, slot })
       } else {
-        const { phases, warnings } = fromPrimeViewTxt(text)
-        const text2 = [`Imported ${file.name}`, ...warnings].join(' ')
-        dispatch({ type: 'importPhases', phases, name: file.name.replace(/\.[^.]+$/, ''), slot: slotFromFileName(file.name), status: { text: text2, sticky: warnings.length > 0 } })
+        const status = { text: message, sticky: result.warnings.length > 0 }
+        dispatch({ type: 'importPhases', phases: result.phases, name: file.name.replace(/\.[^.]+$/, ''), slot, status })
       }
     } catch (err) {
       const reason = err instanceof MethodImportError ? err.message : 'The file could not be read.'
       dispatch({ type: 'setStatus', status: { text: `Could not import ${file.name}: ${reason}`, sticky: true } })
     }
-  }
-
-  const exportJson = () => {
-    const m = currentMethod(state, new Date().toISOString())
-    downloadText(`${m.name || 'method'}.json`, toJson(m), 'application/json')
   }
 
   return (
@@ -79,13 +75,9 @@ export function MethodsPopover({ state, dispatch, onClose }: { state: State; dis
       </div>
       <div className="popover-foot">
         <label className="btn file-btn">
-          Import .json / .txt
-          <input type="file" accept=".json,.txt,application/json,text/plain" className="visually-hidden" onChange={(e) => void importFile(e.currentTarget)} />
+          Import .txt
+          <input type="file" accept=".txt,text/plain" className="visually-hidden" onChange={(e) => void importFile(e.currentTarget)} />
         </label>
-        <span className="spacer" />
-        <button type="button" className="btn" onClick={exportJson}>
-          Export .json
-        </button>
       </div>
     </div>
   )

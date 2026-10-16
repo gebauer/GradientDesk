@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { calcProgram } from '../src/domain/calc'
 import { columnsFor, SEED_COLUMNS } from '../src/domain/columns'
-import { APPLICATIONS, defaultMethodName, defaultSelection, newPhaseAfter, templateFor } from '../src/domain/templates'
+import { APPLICATIONS, defaultInj, defaultMethodName, defaultSelection, newPhaseAfter, PHASE_TYPES, templateFor } from '../src/domain/templates'
 import type { ApplicationId, Column } from '../src/domain/types'
 import { validateProgram } from '../src/domain/validate'
 
@@ -97,4 +97,14 @@ test('default method name', () => {
 test('new phase continues at the end %B of the selected phase', () => {
   const sel = templateFor('imac', col('HisTrap HP 5 ml'))[3]
   expect(newPhaseAfter(sel)).toMatchObject({ name: 'New phase', type: 'wash', len: 5, unit: 'CV', b0: 100, b1: 100, grad: false, flow: 5, inlet: 1 })
+})
+
+test('injection valve default follows the phase type', () => {
+  expect(PHASE_TYPES.map((t) => [t.id, defaultInj(t.id)])).toEqual([
+    ['equil', 'Load'], ['sample', 'Inject'], ['wash', 'Load'], ['elution', 'Load'], ['strip', 'Load'], ['pumpwash', 'Waste'],
+  ])
+  for (const app of APPLICATIONS) {
+    const c = columnsFor(app.id, SEED_COLUMNS)[0]
+    expect(templateFor(app.id, c).every((p) => p.inj === defaultInj(p.type)), app.id).toBe(true)
+  }
 })

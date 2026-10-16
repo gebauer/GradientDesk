@@ -1,7 +1,7 @@
 import { useCallback, useState, type MouseEvent as ReactMouseEvent } from 'react'
-import { calcProgram } from '../../domain/calc'
-import { APPLICATIONS, PHASE_TYPES } from '../../domain/templates'
-import type { Inlet, Phase, PhaseType } from '../../domain/types'
+import { calcProgram, sortLines } from '../../domain/calc'
+import { APPLICATIONS, INJECT_VALVES, PHASE_TYPES, retypePatch } from '../../domain/templates'
+import type { Inlet, InjectValve, Phase, PhaseType, PumpLine } from '../../domain/types'
 import { validateProgram } from '../../domain/validate'
 import { currentColumn, type Action, type State } from '../../state/store'
 import { GradientChart } from '../chart/GradientChart'
@@ -15,6 +15,14 @@ import { PhaseMenu } from '../PhaseMenu'
 import { StepHeader } from '../StepHeader'
 
 const INLETS: Inlet[] = [1, 2, 3, 4, 5, 6, 7, 8]
+/** Checkbox order; the wash itself runs B, A8 … A1. */
+const LINE_CHOICES: PumpLine[] = ['B', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8']
+
+/** Phase list meta: "5 CV · 5→100 %B", for a pump wash "2 × 40 ml · B, A1". */
+function phaseMeta(q: Phase): string {
+  if (q.type === 'pumpwash') return `${q.lines?.length ?? 0} × ${fmt(q.len)} ml · ${q.lines?.join(', ') || 'no lines'}`
+  return `${fmt(q.len)} ${q.unit} · ${q.grad ? `${fmt(q.b0)}→${fmt(q.b1)}` : fmt(q.b0)} %B`
+}
 
 export function ProgramStep({ state, dispatch }: { state: State; dispatch: (a: Action) => void }) {
   const column = currentColumn(state)
@@ -71,9 +79,7 @@ export function ProgramStep({ state, dispatch }: { state: State; dispatch: (a: A
                   <span className="phase-num">{i + 1}</span>
                   <span className="swatch" style={{ background: phaseColor(q.type) }} />
                   <span className="phase-name">{q.name}</span>
-                  <span className="phase-meta">
-                    {fmt(q.len)} {q.unit} · {q.grad ? `${fmt(q.b0)}→${fmt(q.b1)}` : fmt(q.b0)} %B
-                  </span>
+                  <span className="phase-meta">{phaseMeta(q)}</span>
                 </button>
               </li>
             ))}
@@ -105,7 +111,7 @@ export function ProgramStep({ state, dispatch }: { state: State; dispatch: (a: A
             </label>
             <label className="field span-2">
               Phase type
-              <select className="input" value={p.type} onChange={(e) => upd({ type: e.target.value as PhaseType })}>
+              <select className="input" value={p.type} onChange={(e) => upd(retypePatch(p, e.target.value as PhaseType))}>
                 {PHASE_TYPES.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
@@ -113,71 +119,118 @@ export function ProgramStep({ state, dispatch }: { state: State; dispatch: (a: A
                 ))}
               </select>
             </label>
-            <div className="field">
-              <label htmlFor={id('len')}>Length</label>
-              <div className="len-row">
-                <NumberInput id={id('len')} step="0.5" min="0" value={p.len} onValue={(len) => upd({ len })} invalid={!!issue('len')} />
-                <Segmented label="Length unit" value={p.unit} options={['CV', 'ml'] as const} onChange={(unit) => dispatch({ type: 'setUnit', index: sel, unit })} />
-              </div>
-            </div>
-            <div className="field">
-              <label htmlFor={id('b0')}>Start %B</label>
-              <NumberInput
-                id={id('b0')}
-                min="0"
-                max="100"
-                value={p.b0}
-                onValue={(b0) => upd(p.grad ? { b0 } : { b0, b1: b0 })}
-                invalid={!!issue('b0')}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor={id('b1')}>End %B</label>
-              <NumberInput
-                id={id('b1')}
-                min="0"
-                max="100"
-                value={p.grad ? p.b1 : p.b0}
-                disabled={!p.grad}
-                onValue={(b1) => upd({ b1 })}
-                invalid={!!issue('b1')}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor={id('grad')}>Gradient</label>
-              <Toggle id={id('grad')} on={p.grad} onChange={(grad) => upd({ grad, b1: p.b0 })} labelOn="Linear gradient" labelOff="Isocratic" />
-            </div>
-            <div className="field">
-              <label htmlFor={id('flow')}>Flow (ml/min)</label>
-              <NumberInput
-                id={id('flow')}
-                step="0.5"
-                min="0"
-                value={p.flow}
-                onValue={(flow) => upd({ flow })}
-                invalid={!!issue('flow')}
-                aria-describedby={issue('flow') ? id('issues') : undefined}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor={id('frac')}>Fraction size (ml)</label>
-              <NumberInput id={id('frac')} step="0.5" min="0" value={p.frac} onValue={(frac) => upd({ frac })} invalid={!!issue('frac')} />
-            </div>
-            <label className="field">
-              Inlet A
-              <select className="input" value={p.inlet} onChange={(e) => upd({ inlet: Number(e.target.value) as Inlet })}>
-                {INLETS.map((i) => (
-                  <option key={i} value={i}>
-                    A{i}
-                    {i === 8 ? ' (sample)' : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="field">
-              <label htmlFor={id('az')}>Autozero at start</label>
-              <Toggle id={id('az')} on={p.az} onChange={(az) => upd({ az })} labelOn="On" labelOff="Off" />
-            </div>
+            {p.type === 'pumpwash' ? (
+              <>
+                <fieldset className="field span-4 line-set" aria-invalid={!!issue('lines') || undefined}>
+                  <legend>Lines to wash · runs B, A8 … A1</legend>
+                  <div className="line-choices">
+                    {LINE_CHOICES.map((l) => (
+                      <label key={l} className="line-choice">
+                        <input
+                          type="checkbox"
+                          checked={p.lines?.includes(l) ?? false}
+                          onChange={(e) => {
+                            const rest = (p.lines ?? []).filter((x) => x !== l)
+                            upd({ lines: sortLines(e.target.checked ? [...rest, l] : rest) })
+                          }}
+                        />
+                        {l}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <div className="field">
+                  <label htmlFor={id('len')}>Volume per line (ml)</label>
+                  <NumberInput id={id('len')} step="5" min="0" value={p.len} onValue={(len) => upd({ len })} invalid={!!issue('len')} />
+                </div>
+                <div className="field">
+                  <label htmlFor={id('flow')}>Flow (ml/min)</label>
+                  <NumberInput id={id('flow')} step="0.5" min="0" value={p.flow} onValue={(flow) => upd({ flow })} invalid={!!issue('flow')} />
+                </div>
+                <div className="field">
+                  Injection valve
+                  <div className="input input-static">Waste</div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="field">
+                  <label htmlFor={id('len')}>Length</label>
+                  <div className="len-row">
+                    <NumberInput id={id('len')} step="0.5" min="0" value={p.len} onValue={(len) => upd({ len })} invalid={!!issue('len')} />
+                    <Segmented label="Length unit" value={p.unit} options={['CV', 'ml'] as const} onChange={(unit) => dispatch({ type: 'setUnit', index: sel, unit })} />
+                  </div>
+                </div>
+                <div className="field">
+                  <label htmlFor={id('b0')}>Start %B</label>
+                  <NumberInput
+                    id={id('b0')}
+                    min="0"
+                    max="100"
+                    value={p.b0}
+                    onValue={(b0) => upd(p.grad ? { b0 } : { b0, b1: b0 })}
+                    invalid={!!issue('b0')}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor={id('b1')}>End %B</label>
+                  <NumberInput
+                    id={id('b1')}
+                    min="0"
+                    max="100"
+                    value={p.grad ? p.b1 : p.b0}
+                    disabled={!p.grad}
+                    onValue={(b1) => upd({ b1 })}
+                    invalid={!!issue('b1')}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor={id('grad')}>Gradient</label>
+                  <Toggle id={id('grad')} on={p.grad} onChange={(grad) => upd({ grad, b1: p.b0 })} labelOn="Linear gradient" labelOff="Isocratic" />
+                </div>
+                <div className="field">
+                  <label htmlFor={id('flow')}>Flow (ml/min)</label>
+                  <NumberInput
+                    id={id('flow')}
+                    step="0.5"
+                    min="0"
+                    value={p.flow}
+                    onValue={(flow) => upd({ flow })}
+                    invalid={!!issue('flow')}
+                    aria-describedby={issue('flow') ? id('issues') : undefined}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor={id('frac')}>Fraction size (ml)</label>
+                  <NumberInput id={id('frac')} step="0.5" min="0" value={p.frac} onValue={(frac) => upd({ frac })} invalid={!!issue('frac')} />
+                </div>
+                <label className="field">
+                  Inlet A
+                  <select className="input" value={p.inlet} onChange={(e) => upd({ inlet: Number(e.target.value) as Inlet })}>
+                    {INLETS.map((i) => (
+                      <option key={i} value={i}>
+                        A{i}
+                        {i === 8 ? ' (sample)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field">
+                  Injection valve
+                  <select className="input" value={p.inj} onChange={(e) => upd({ inj: e.target.value as InjectValve })}>
+                    {INJECT_VALVES.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="field">
+                  <label htmlFor={id('az')}>Autozero at start</label>
+                  <Toggle id={id('az')} on={p.az} onChange={(az) => upd({ az })} labelOn="On" labelOff="Off" />
+                </div>
+              </>
+            )}
           </div>
 
           {issues.length > 0 && (

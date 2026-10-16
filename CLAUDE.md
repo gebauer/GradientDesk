@@ -15,9 +15,10 @@ The design and behavior are specified in `docs/SPEC.md` (source of truth) and `d
 Vite + React 19 (latest stable) + TypeScript (strict). Node 24 LTS (`.nvmrc`). Plain CSS modules or a single tokens CSS file. No UI framework, no chart library: the chart is a hand-written SVG component. Vitest for tests. See `docs/BUILD.md`.
 
 ## Rules
-- Keep domain logic **pure and framework-free** in `src/domain/`: calculations, templates, breakpoints, txt export/import, JSON (de)serialization. React components only render and dispatch.
+- Keep domain logic **pure and framework-free** in `src/domain/`: calculations, templates, breakpoints, txt export/import (incl. the method block), method data (de)serialization for localStorage. React components only render and dispatch.
 - The **export format is the contract**. Any change to `toPrimeViewTxt()` must keep the golden-file tests green. Golden files in `tests/golden/` are real PrimeView dumps (CRLF, trailing spaces; `.gitattributes` keeps them byte-exact). When a new sample arrives, add it as a golden file first, then change the code.
-- Round-trip must hold: `fromJson(toJson(m))` deep-equals `m`. `fromTxt(toTxt(m))` must reproduce volumes, %B, flow, fraction, inlet and autozero at every breakpoint. Names and types may differ.
+- There is no JSON file export/import: the `.txt` carries the complete method in a trailing `**` comment block (INI style, `docs/primeview-format.md` §11). JSON is only the localStorage format.
+- Round-trip must hold: `fromJson(toJson(m))` and `fromMethodTxt(toMethodTxt(m))` deep-equal `m` (apart from `modified`). The breakpoint table alone (`fromPrimeViewTxt(toPrimeViewTxt(m))`) must reproduce volumes, %B, flow, fraction, inlet, injection valve and autozero at every breakpoint. Names and types may differ.
 - Volumes and %B are in **ml** and **%**. Store phase length with its unit (`CV`|`ml`) and only convert for display, calculation and export.
 - Validate before export:
   - flow > 0 and ≤ column max (show a warning; export stays allowed)
@@ -45,6 +46,8 @@ Vite + React 19 (latest stable) + TypeScript (strict). Node 24 LTS (`.nvmrc`). P
 - **%B**: concentration of buffer B
 - **Breakpoint**: a row in the PrimeView table at a given volume
 - **Inlet A**: position of the inlet valve (A1–A8; A8 is used for the sample)
+- **Injection valve**: Load (pump → column), Inject (pump → loop → column), Waste (pump → waste, column bypassed; used by the pump wash phase)
+- **Pump wash**: one phase with checked lines (B, A1–A8) and a volume per line (default 40 ml at 10 ml/min, Waste); runs and exports as one segment per line in the order B, A8 … A1
 - **Autozero**: zero the UV signal at that breakpoint
 - **Isocratic**: constant %B; **gradient**: linear %B change over the phase
 

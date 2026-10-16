@@ -125,3 +125,17 @@ test('recently used columns appear in a Recent section at the top', async () => 
   expect(radios[0].textContent).toContain('Superdex 200 Increase 10/300 GL')
   expect(radios).toHaveLength(101)
 })
+
+test('a pump wash phase picks its lines with checkboxes', async () => {
+  const user = userEvent.setup()
+  render(<App />)
+  await user.click(screen.getByRole('button', { name: /Program/ }))
+  await user.selectOptions(screen.getByLabelText('Phase type'), 'Pump wash')
+  const lines = within(screen.getByRole('group', { name: /Lines to wash/ }))
+  expect(lines.getByLabelText('B')).toHaveProperty('checked', true)
+  expect(lines.getByLabelText('A1')).toHaveProperty('checked', true)
+  await user.click(lines.getByLabelText('A8'))
+  expect(screen.getByText('3 × 40 ml · B, A8, A1')).toBeTruthy()
+  expect((screen.getByLabelText('Volume per line (ml)') as HTMLInputElement).value).toBe('40')
+  expect(screen.queryByLabelText('Start %B')).toBeNull()
+})

@@ -1,4 +1,4 @@
-import type { ApplicationId, Column, Inlet, LengthUnit, Phase, PhaseType } from './types'
+import type { ApplicationId, Column, Inlet, InjectValve, LengthUnit, Phase, PhaseType, PumpLine } from './types'
 
 export interface Application {
   id: ApplicationId
@@ -25,7 +25,34 @@ export const PHASE_TYPES: readonly { id: PhaseType; name: string }[] = [
   { id: 'wash', name: 'Wash' },
   { id: 'elution', name: 'Elution' },
   { id: 'strip', name: 'Strip / CIP' },
+  { id: 'pumpwash', name: 'Pump wash' },
 ]
+
+export const INJECT_VALVES: readonly InjectValve[] = ['Load', 'Inject', 'Waste']
+
+/** Injection valve position a phase type starts with: sample through the loop, pump wash to waste, everything else straight to the column. */
+export function defaultInj(type: PhaseType): InjectValve {
+  return type === 'sample' ? 'Inject' : type === 'pumpwash' ? 'Waste' : 'Load'
+}
+
+/** Pump wash defaults: 40 ml per line at 10 ml/min to waste. */
+export const PUMP_WASH_ML = 40
+export const PUMP_WASH_FLOW = 10
+export const PUMP_WASH_LINES: readonly PumpLine[] = ['B', 'A1']
+
+/**
+ * Patch for changing a phase's type: the injection valve follows the type; a pump wash gets its
+ * defaults (lines, 40 ml per line, 10 ml/min, no fractions, no autozero), other types drop the lines.
+ * %B stays, so connected gradients are not moved.
+ */
+export function retypePatch(p: Phase, type: PhaseType): Partial<Phase> {
+  const patch: Partial<Phase> = { type, inj: defaultInj(type) }
+  if (type === 'pumpwash' && p.type !== 'pumpwash') {
+    return { ...patch, lines: [...PUMP_WASH_LINES], len: PUMP_WASH_ML, unit: 'ml', flow: PUMP_WASH_FLOW, frac: 0, az: false }
+  }
+  if (type !== 'pumpwash') return { ...patch, lines: undefined }
+  return patch
+}
 
 const P = (
   name: string,
@@ -38,7 +65,7 @@ const P = (
   frac: number,
   inlet: Inlet,
   az: boolean,
-): Phase => ({ name, type, len, unit, b0, b1, grad: b0 !== b1, flow, frac, inlet, az })
+): Phase => ({ name, type, len, unit, b0, b1, grad: b0 !== b1, flow, frac, inlet, inj: defaultInj(type), az })
 
 /** Fraction size for gradient/step elutions: 2 ml, or 1 ml for columns below 5 ml. */
 const elutionFrac = (c: Column) => (c.cv >= 5 ? 2 : 1)

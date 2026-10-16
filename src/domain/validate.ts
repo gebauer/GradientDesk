@@ -1,7 +1,7 @@
-import { calcProgram, phaseMl, stepsBefore } from './calc'
+import { calcProgram, expandPhases, phaseMl, stepsBefore } from './calc'
 import type { Column, Phase } from './types'
 
-export type IssueField = 'len' | 'b0' | 'b1' | 'flow' | 'frac' | 'inlet'
+export type IssueField = 'len' | 'b0' | 'b1' | 'flow' | 'frac' | 'inlet' | 'lines'
 
 export interface Issue {
   phase: number
@@ -23,10 +23,12 @@ export function validatePhase(p: Phase, i: number, column: Column): Issue[] {
   const err = (field: IssueField, message: string) => issues.push({ phase: i, field, level: 'error', message })
 
   if (!(p.len > 0)) err('len', 'Length must be greater than 0.')
+  if (p.type === 'pumpwash') return [...issues, ...validatePumpWash(p, i)]
   if (!(p.b0 >= 0 && p.b0 <= 100)) err('b0', 'Start %B must be between 0 and 100.')
   if (p.grad && !(p.b1 >= 0 && p.b1 <= 100)) err('b1', 'End %B must be between 0 and 100.')
   if (!(p.flow > 0)) err('flow', 'Flow must be greater than 0.')
-  else if (column.flow !== null && p.flow > column.flow) {
+  // On Waste the flow bypasses the column, so its max flow doesn't apply.
+  else if (column.flow !== null && p.inj !== 'Waste' && p.flow > column.flow) {
     issues.push({ phase: i, field: 'flow', level: 'warning', message: `Above the column maximum of ${fmt(column.flow)} ml/min.` })
   }
   if (!(p.frac >= 0)) err('frac', 'Fraction size cannot be negative.')
@@ -43,17 +45,36 @@ export function validatePhase(p: Phase, i: number, column: Column): Issue[] {
   return issues
 }
 
+/** Pump wash: %B, inlet, fractions and autozero come from the lines, so only lines, volume and flow are checked. */
+function validatePumpWash(p: Phase, i: number): Issue[] {
+  const issues: Issue[] = []
+  if (!p.lines?.length) issues.push({ phase: i, field: 'lines', level: 'error', message: 'Select at least one line to wash.' })
+  if (!(p.flow > 0)) issues.push({ phase: i, field: 'flow', level: 'error', message: 'Flow must be greater than 0.' })
+  else if (Math.abs(p.flow * 10 - Math.round(p.flow * 10)) > 1e-6) {
+    issues.push({ phase: i, field: 'flow', level: 'warning', message: 'The ÄKTA prime takes flow in 0.1 ml/min steps; the export rounds it.' })
+  }
+  return issues
+}
+
 const round1 = (x: number) => Math.round(x * 10) / 10
 
-/** Per-phase checks plus the minimum lengths the breakpoint file needs (strictly increasing volumes). */
+/**
+ * Per-phase checks plus the minimum lengths the breakpoint file needs (strictly increasing volumes),
+ * checked per segment so each line of a pump wash counts.
+ */
 export function validateProgram(phases: readonly Phase[], column: Column): Issue[] {
-  const calc = calcProgram(phases, column)
+  const segs = expandPhases(phases)
+  const calc = calcProgram(segs.map((s) => s.p), column)
+  const short = new Map<number, boolean>()
+  segs.forEach(({ p, src }, k) => {
+    const c = calc.phases[k]
+    const step = stepsBefore(calc, k)
+    if (p.len > 0 && round1(c.v1) - round1(c.v0) < (step ? 0.2 : 0.1) - 1e-9) short.set(src, short.get(src) || step)
+  })
   return phases.flatMap((p, i) => {
     const issues = validatePhase(p, i, column)
-    const c = calc.phases[i]
-    const step = stepsBefore(calc, i)
-    const min = step ? 0.2 : 0.1
-    if (p.len > 0 && round1(c.v1) - round1(c.v0) < min - 1e-9) {
+    const step = short.get(i)
+    if (step !== undefined) {
       issues.push({
         phase: i,
         field: 'len',

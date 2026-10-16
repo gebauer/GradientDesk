@@ -4,7 +4,7 @@
 
 Plan chromatography runs for the ÄKTA prime / prime plus in the browser and export them as a PrimeView breakpoint table (`.txt`).
 
-Pick an application (IMAC, IEX, SEC, column equilibration) and a column, then edit the program graphically or phase by phase. Methods are stored in your browser and can be exchanged as JSON. There is no backend; nothing leaves your machine.
+Pick an application (IMAC, IEX, SEC, column equilibration) and a column, then edit the program graphically or phase by phase. Methods are stored in your browser; the exported `.txt` carries the complete method, so it can be imported again. There is no backend; nothing leaves your machine.
 
 > **Status:** early development. The `.txt` export format is preliminary and the column library values are placeholders.
 
