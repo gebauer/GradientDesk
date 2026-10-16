@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { columnsFor, columnsOfType, defaultColumnType, defaultRecFlow, filterColumns, RECENT_LIMIT, searchColumns, SEED_COLUMNS, splitRecent, touchRecent, vendorCounts } from '../src/domain/columns'
+import { columnsFor, columnsOfType, defaultColumnType, filterColumns, RECENT_LIMIT, searchColumns, SEED_COLUMNS, splitRecent, touchRecent, vendorCounts } from '../src/domain/columns'
 import type { ApplicationId, Column } from '../src/domain/types'
 
 const byName = (name: string): Column => {
@@ -37,9 +37,9 @@ describe('seed column library', () => {
     expect(byName('HisTrap HP 1 ml')).toMatchObject({ cv: 1, flow: 4, rec: 1, p: 0.5, apps: ['imac'] })
     expect(byName('HisTrap HP 5 ml')).toMatchObject({ cv: 5, flow: 20, rec: 5 })
     expect(byName('HiTrap CM FF 5 ml')).toMatchObject({ cv: 5, flow: 20 })
-    expect(byName('HiLoad 16/600 Superdex 200 pg')).toMatchObject({ cv: 120, flow: 1.6, rec: 0.8, p: 0.3 })
+    expect(byName('HiLoad 16/600 Superdex 200 pg')).toMatchObject({ cv: 120, flow: 1.6, rec: 1, p: 0.3 })
     expect(byName('Bio-Scale Mini Bio-Gel P-6 Desalting 50 ml')).toMatchObject({ flow: null, p: 0.28 })
-    expect(byName('Strep-Tactin XT 4Flow Cartridge 5 ml')).toMatchObject({ flow: 3, rec: 3 })
+    expect(byName('Strep-Tactin XT 4Flow Cartridge 5 ml')).toMatchObject({ flow: 3, rec: 1 })
   })
 
   test('unknown max flow is kept as null', () => {
@@ -52,12 +52,13 @@ describe('seed column library', () => {
   })
 })
 
-test('defaultRecFlow', () => {
-  expect(defaultRecFlow(1, 4)).toBe(1)
-  expect(defaultRecFlow(5, 3)).toBe(3)
-  expect(defaultRecFlow(5, null)).toBe(5)
-  expect(defaultRecFlow(20, 10)).toBe(5)
-  expect(defaultRecFlow(50, null)).toBe(5)
+test('recommended flows from the source: vendor values, the lower end of a range, estimates marked', () => {
+  expect(byName('GSTrap HP 5 ml')).toMatchObject({ rec: 2.5 })
+  expect(byName('GSTrap HP 5 ml').recEstimated).toBeUndefined()
+  expect(byName('Superdex 75 10/300 GL')).toMatchObject({ rec: 0.5 })
+  expect(byName('Superdex 200 Increase 10/300 GL')).toMatchObject({ rec: 0.25, recEstimated: true })
+  expect(byName('Bio-Scale Mini Bio-Gel P-6 Desalting 50 ml')).toMatchObject({ rec: 5, recEstimated: true })
+  expect(SEED_COLUMNS.filter((c) => c.flow === null).every((c) => c.recEstimated)).toBe(true)
 })
 
 describe('column search', () => {

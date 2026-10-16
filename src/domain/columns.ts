@@ -5,17 +5,19 @@ export const SYSTEM_MAX_PRESSURE = 1.0
 
 /**
  * Seed column library, from docs/data/columns-source.de.csv.
- * Values are unverified against vendor datasheets. Recommended flows are a heuristic
- * (see defaultRecFlow) unless set explicitly.
+ * Values are unverified against vendor datasheets. The recommended flow is the vendor's typical
+ * value (the lower end where only a range is given, with the range in the note); `est` marks
+ * values estimated where the vendor gives none.
  */
 
 interface Size {
   cv: number
   /** ml/min; null = vendor gives no value */
   flow: number | null
+  /** Recommended flow, ml/min */
+  rec: number
   /** MPa; overrides the entry's pressure for this size */
   p?: number
-  rec?: number
 }
 
 interface Entry {
@@ -26,73 +28,67 @@ interface Entry {
   /** MPa, lower of packed bed and hardware limit */
   p: number
   sizes: Size[]
+  /** Recommended flows are estimates, not vendor values. */
+  est?: boolean
   /** Size goes into the name ("HisTrap HP 1 ml"); off for columns sold in one size. */
   sizeInName?: boolean
   note?: string
 }
 
-const hitrap = (flow1: number | null, flow5: number | null): Size[] => [
-  { cv: 1, flow: flow1 },
-  { cv: 5, flow: flow5 },
+/** 1 ml and 5 ml cartridges; recommended flow 1 CV/min unless given. */
+const hitrap = (flow1: number | null, flow5: number | null, rec1 = 1, rec5 = 5): Size[] => [
+  { cv: 1, flow: flow1, rec: rec1 },
+  { cv: 5, flow: flow5, rec: rec5 },
 ]
 
 const ENTRIES: Entry[] = [
   // IMAC
   { names: ['HisTrap HP', 'HisTrap FF', 'HisTrap FF crude', 'HisTrap excel'], manufacturer: 'Cytiva', apps: ['imac'], p: 0.5, sizes: hitrap(4, 20) },
-  { names: ['EconoFit Profinity IMAC'], manufacturer: 'Bio-Rad', apps: ['imac'], p: 0.5, sizes: hitrap(6, 20) },
-  { names: ['EconoFit Nuvia IMAC'], manufacturer: 'Bio-Rad', apps: ['imac'], p: 0.5, sizes: hitrap(null, null) },
-  { names: ['Bio-Scale Mini Profinity IMAC', 'Bio-Scale Mini Nuvia IMAC'], manufacturer: 'Bio-Rad', apps: ['imac'], p: 0.31, sizes: hitrap(null, null), note: 'Being replaced by EconoFit.' },
-  { names: ['HisPur Ni-NTA Chromatography Cartridge'], manufacturer: 'Thermo Fisher', apps: ['imac'], p: 0.3, sizes: hitrap(4, 10) },
-  { names: ['Ni-NTA Superflow Cartridge'], manufacturer: 'Qiagen', apps: ['imac'], p: 0.5, sizes: hitrap(null, null), note: 'No cartridge pressure limit given (resin 1.0 MPa); 0.5 MPa assumed to be safe.' },
-  { names: ['His60 Ni Superflow Cartridge'], manufacturer: 'Takara Bio', apps: ['imac'], p: 0.5, sizes: hitrap(10, 40) },
+  { names: ['EconoFit Profinity IMAC'], manufacturer: 'Bio-Rad', apps: ['imac'], p: 0.5, sizes: hitrap(6, 20), note: 'Recommended 1–2 ml/min (1 ml) or 5–10 ml/min (5 ml).' },
+  { names: ['EconoFit Nuvia IMAC'], manufacturer: 'Bio-Rad', apps: ['imac'], p: 0.5, sizes: hitrap(null, null), est: true },
+  { names: ['Bio-Scale Mini Profinity IMAC', 'Bio-Scale Mini Nuvia IMAC'], manufacturer: 'Bio-Rad', apps: ['imac'], p: 0.31, sizes: hitrap(null, null), est: true, note: 'Being replaced by EconoFit.' },
+  { names: ['HisPur Ni-NTA Chromatography Cartridge'], manufacturer: 'Thermo Fisher', apps: ['imac'], p: 0.3, sizes: hitrap(4, 10), note: 'Recommended 1–2 ml/min (1 ml) or 5 ml/min (5 ml); load at 0.5–1 or 1–2 ml/min.' },
+  { names: ['Ni-NTA Superflow Cartridge'], manufacturer: 'Qiagen', apps: ['imac'], p: 0.5, sizes: hitrap(null, null), est: true, note: 'No cartridge pressure limit given (resin 1.0 MPa); 0.5 MPa assumed to be safe.' },
+  { names: ['His60 Ni Superflow Cartridge'], manufacturer: 'Takara Bio', apps: ['imac'], p: 0.5, sizes: hitrap(10, 40), est: true },
 
   // Affinity (step elution)
-  { names: ['GSTrap HP', 'GSTrap FF'], manufacturer: 'Cytiva', apps: ['affinity'], p: 0.5, sizes: hitrap(4, 20), note: 'Slow binding kinetics: load sample at 0.2–1 ml/min (1 ml) or 0.5–5 ml/min (5 ml).' },
-  { names: ['GSTrap 4B'], manufacturer: 'Cytiva', apps: ['affinity'], p: 0.5, sizes: hitrap(1, 5), note: 'Max flow is the recommended upper value; no separate maximum given.' },
+  { names: ['GSTrap HP', 'GSTrap FF'], manufacturer: 'Cytiva', apps: ['affinity'], p: 0.5, sizes: hitrap(4, 20, 0.5, 2.5), note: 'Slow binding kinetics: load at 0.2–1 ml/min (1 ml) or 0.5–5 ml/min (5 ml), wash at 1–2 or 5–10 ml/min.' },
+  { names: ['GSTrap 4B'], manufacturer: 'Cytiva', apps: ['affinity'], p: 0.5, sizes: hitrap(1, 5, 0.5, 2.5), note: 'Max flow is the recommended upper value; no separate maximum given.' },
   { names: ['StrepTrap HP', 'StrepTrap XT'], manufacturer: 'Cytiva', apps: ['affinity'], p: 0.5, sizes: hitrap(4, 20) },
-  { names: ['MBPTrap HP'], manufacturer: 'Cytiva', apps: ['affinity'], p: 0.5, sizes: hitrap(4, 20) },
+  { names: ['MBPTrap HP'], manufacturer: 'Cytiva', apps: ['affinity'], p: 0.5, sizes: hitrap(4, 20), note: 'Load at 0.5 ml/min (1 ml) or 2.5 ml/min (5 ml) if needed.' },
   { names: ['HiTrap Protein A HP', 'HiTrap Protein G HP'], manufacturer: 'Cytiva', apps: ['affinity'], p: 0.3, sizes: hitrap(4, 20) },
   { names: ['HiTrap Heparin HP'], manufacturer: 'Cytiva', apps: ['affinity', 'iex'], p: 0.5, sizes: hitrap(4, 20) },
-  { names: ['Bio-Scale Mini Profinity GST'], manufacturer: 'Bio-Rad', apps: ['affinity'], p: 0.31, sizes: hitrap(null, null) },
-  { names: ['Bio-Scale Mini Profinity eXact'], manufacturer: 'Bio-Rad', apps: ['affinity'], p: 0.31, sizes: [{ cv: 5, flow: null }] },
-  { names: ['Bio-Scale Mini UNOsphere SUPrA'], manufacturer: 'Bio-Rad', apps: ['affinity'], p: 0.31, sizes: hitrap(3, 15) },
-  { names: ['Strep-Tactin XT 4Flow Cartridge'], manufacturer: 'IBA Lifesciences', apps: ['affinity'], p: 0.35, sizes: hitrap(1, 3), note: 'Max flow is the upper end of the vendor range.' },
+  { names: ['Bio-Scale Mini Profinity GST'], manufacturer: 'Bio-Rad', apps: ['affinity'], p: 0.31, sizes: hitrap(null, null, 0.5, 2.5), est: true, note: 'Slow binding kinetics, as with GSTrap.' },
+  { names: ['Bio-Scale Mini Profinity eXact'], manufacturer: 'Bio-Rad', apps: ['affinity'], p: 0.31, sizes: [{ cv: 5, flow: null, rec: 2 }], est: true },
+  { names: ['Bio-Scale Mini UNOsphere SUPrA'], manufacturer: 'Bio-Rad', apps: ['affinity'], p: 0.31, sizes: hitrap(3, 15), note: 'Recommended 1–2 ml/min (1 ml) or 5–10 ml/min (5 ml).' },
+  { names: ['Strep-Tactin XT 4Flow Cartridge'], manufacturer: 'IBA Lifesciences', apps: ['affinity'], p: 0.35, sizes: hitrap(1, 3, 0.5, 1), note: 'Recommended 0.5–1 ml/min (1 ml) or 1–3 ml/min (5 ml); max flow is the upper end of the vendor range.' },
 
   // IEX
   { names: ['HiTrap Q HP', 'HiTrap SP HP', 'HiTrap Q FF', 'HiTrap SP FF', 'HiTrap DEAE FF', 'HiTrap CM FF'], manufacturer: 'Cytiva', apps: ['iex'], p: 0.5, sizes: hitrap(4, 20) },
-  { names: ['HiPrep Q FF 16/10', 'HiPrep SP FF 16/10', 'HiPrep DEAE FF 16/10', 'HiPrep CM FF 16/10'], manufacturer: 'Cytiva', apps: ['iex'], p: 0.15, sizes: [{ cv: 20, flow: 10 }], sizeInName: false },
-  { names: ['Mono Q 5/50 GL', 'Mono S 5/50 GL'], manufacturer: 'Cytiva', apps: ['iex'], p: 4, sizes: [{ cv: 1, flow: 3 }], sizeInName: false, note: 'Limited to 1 MPa by the system.' },
-  { names: ['EconoFit UNOsphere Q', 'EconoFit UNOsphere S'], manufacturer: 'Bio-Rad', apps: ['iex'], p: 0.5, sizes: hitrap(null, null) },
-  { names: ['Bio-Scale Mini UNOsphere Q', 'Bio-Scale Mini UNOsphere S', 'Bio-Scale Mini Macro-Prep High Q', 'Bio-Scale Mini Macro-Prep High S'], manufacturer: 'Bio-Rad', apps: ['iex'], p: 0.31, sizes: hitrap(null, null) },
-  { names: ['Bio-Scale Mini CHT'], manufacturer: 'Bio-Rad', apps: ['iex'], p: 0.31, sizes: [{ cv: 5, flow: null }], note: 'Hydroxyapatite (mixed mode); phosphate gradient.' },
+  { names: ['HiPrep Q FF 16/10', 'HiPrep SP FF 16/10', 'HiPrep DEAE FF 16/10', 'HiPrep CM FF 16/10'], manufacturer: 'Cytiva', apps: ['iex'], p: 0.15, sizes: [{ cv: 20, flow: 10, rec: 5 }], sizeInName: false, note: 'Recommended 2–10 ml/min.' },
+  { names: ['Mono Q 5/50 GL', 'Mono S 5/50 GL'], manufacturer: 'Cytiva', apps: ['iex'], p: 4, sizes: [{ cv: 1, flow: 3, rec: 1 }], sizeInName: false, note: 'Recommended 0.5–3 ml/min. Limited to 1 MPa by the system.' },
+  { names: ['EconoFit UNOsphere Q', 'EconoFit UNOsphere S'], manufacturer: 'Bio-Rad', apps: ['iex'], p: 0.5, sizes: hitrap(null, null), est: true },
+  { names: ['Bio-Scale Mini UNOsphere Q', 'Bio-Scale Mini UNOsphere S', 'Bio-Scale Mini Macro-Prep High Q', 'Bio-Scale Mini Macro-Prep High S'], manufacturer: 'Bio-Rad', apps: ['iex'], p: 0.31, sizes: hitrap(null, null), est: true },
+  { names: ['Bio-Scale Mini CHT'], manufacturer: 'Bio-Rad', apps: ['iex'], p: 0.31, sizes: [{ cv: 5, flow: null, rec: 2 }], est: true, note: 'Hydroxyapatite (mixed mode); phosphate gradient.' },
 
   // HIC
   { names: ['HiTrap Phenyl HP', 'HiTrap Butyl HP', 'HiTrap Octyl FF'], manufacturer: 'Cytiva', apps: ['hic'], p: 0.5, sizes: hitrap(4, 20) },
-  { names: ['HiPrep Phenyl FF 16/10', 'HiPrep Butyl FF 16/10', 'HiPrep Octyl FF 16/10'], manufacturer: 'Cytiva', apps: ['hic'], p: 0.15, sizes: [{ cv: 20, flow: 10 }], sizeInName: false },
+  { names: ['HiPrep Phenyl FF 16/10', 'HiPrep Butyl FF 16/10', 'HiPrep Octyl FF 16/10'], manufacturer: 'Cytiva', apps: ['hic'], p: 0.15, sizes: [{ cv: 20, flow: 10, rec: 5 }], sizeInName: false, note: 'Recommended 2–10 ml/min.' },
 
   // SEC and desalting
-  { names: ['HiTrap Desalting'], manufacturer: 'Cytiva', apps: ['sec'], p: 0.3, sizes: [{ cv: 5, flow: 15 }] },
-  { names: ['HiPrep 26/10 Desalting'], manufacturer: 'Cytiva', apps: ['sec'], p: 0.15, sizes: [{ cv: 53, flow: 31 }], sizeInName: false, note: 'Up to 15 ml sample.' },
-  { names: ['Bio-Scale Mini Bio-Gel P-6 Desalting'], manufacturer: 'Bio-Rad', apps: ['sec'], p: 0.31, sizes: [{ cv: 5, flow: null }, { cv: 10, flow: null }, { cv: 50, flow: null, p: 0.28 }] },
-  { names: ['HiLoad 16/600 Superdex 75 pg', 'HiLoad 16/600 Superdex 200 pg'], manufacturer: 'Cytiva', apps: ['sec'], p: 0.3, sizes: [{ cv: 120, flow: 1.6 }], sizeInName: false, note: 'Max flow for water at room temperature; halve it at 4 °C or in 20 % ethanol.' },
-  { names: ['HiLoad 26/600 Superdex 75 pg', 'HiLoad 26/600 Superdex 200 pg'], manufacturer: 'Cytiva', apps: ['sec'], p: 0.3, sizes: [{ cv: 320, flow: 4.4 }], sizeInName: false, note: 'Max flow for water at room temperature; halve it at 4 °C or in 20 % ethanol.' },
-  { names: ['Superdex 75 10/300 GL'], manufacturer: 'Cytiva', apps: ['sec'], p: 1.8, sizes: [{ cv: 24, flow: 1.5 }], sizeInName: false, note: 'Max flow for water at room temperature. Limited to 1 MPa by the system.' },
-  { names: ['Superdex 200 10/300 GL'], manufacturer: 'Cytiva', apps: ['sec'], p: 1.5, sizes: [{ cv: 24, flow: 1.0 }], sizeInName: false, note: 'Max flow for water at room temperature. Limited to 1 MPa by the system.' },
-  { names: ['Superdex 200 Increase 10/300 GL'], manufacturer: 'Cytiva', apps: ['sec'], p: 3, sizes: [{ cv: 24, flow: 1.8, rec: 0.3 }], sizeInName: false, note: 'Max flow for water at room temperature. On the ÄKTA prime the 1 MPa system limit allows only about 0.2–0.3 ml/min.' },
-  { names: ['ENrich SEC 70 10 x 300'], manufacturer: 'Bio-Rad', apps: ['sec'], p: 4.1, sizes: [{ cv: 24, flow: 1.5 }], sizeInName: false, note: '0.5–70 kDa. Limited to 1 MPa by the system.' },
-  { names: ['ENrich SEC 650 10 x 300'], manufacturer: 'Bio-Rad', apps: ['sec'], p: 4.1, sizes: [{ cv: 24, flow: 2.0 }], sizeInName: false, note: '5–650 kDa. Limited to 1 MPa by the system.' },
+  { names: ['HiTrap Desalting'], manufacturer: 'Cytiva', apps: ['sec'], p: 0.3, sizes: [{ cv: 5, flow: 15, rec: 5 }], note: 'Recommended 1–10 ml/min.' },
+  { names: ['HiPrep 26/10 Desalting'], manufacturer: 'Cytiva', apps: ['sec'], p: 0.15, sizes: [{ cv: 53, flow: 31, rec: 10 }], est: true, sizeInName: false, note: 'Up to 15 ml sample.' },
+  { names: ['Bio-Scale Mini Bio-Gel P-6 Desalting'], manufacturer: 'Bio-Rad', apps: ['sec'], p: 0.31, sizes: [{ cv: 5, flow: null, rec: 2 }, { cv: 10, flow: null, rec: 2 }, { cv: 50, flow: null, rec: 5, p: 0.28 }], est: true },
+  { names: ['HiLoad 16/600 Superdex 75 pg', 'HiLoad 16/600 Superdex 200 pg'], manufacturer: 'Cytiva', apps: ['sec'], p: 0.3, sizes: [{ cv: 120, flow: 1.6, rec: 1 }], sizeInName: false, note: 'Recommended 0.3–1.6 ml/min. Max flow for water at room temperature; halve it at 4 °C or in 20 % ethanol.' },
+  { names: ['HiLoad 26/600 Superdex 75 pg', 'HiLoad 26/600 Superdex 200 pg'], manufacturer: 'Cytiva', apps: ['sec'], p: 0.3, sizes: [{ cv: 320, flow: 4.4, rec: 2.6 }], sizeInName: false, note: 'Recommended 0.9–4.4 ml/min. Max flow for water at room temperature; halve it at 4 °C or in 20 % ethanol.' },
+  { names: ['Superdex 75 10/300 GL'], manufacturer: 'Cytiva', apps: ['sec'], p: 1.8, sizes: [{ cv: 24, flow: 1.5, rec: 0.5 }], sizeInName: false, note: 'Recommended 0.5–1.0 ml/min. Max flow for water at room temperature. Limited to 1 MPa by the system.' },
+  { names: ['Superdex 200 10/300 GL'], manufacturer: 'Cytiva', apps: ['sec'], p: 1.5, sizes: [{ cv: 24, flow: 1.0, rec: 0.5 }], sizeInName: false, note: 'Recommended 0.25–0.75 ml/min. Max flow for water at room temperature. Limited to 1 MPa by the system.' },
+  { names: ['Superdex 200 Increase 10/300 GL'], manufacturer: 'Cytiva', apps: ['sec'], p: 3, sizes: [{ cv: 24, flow: 1.8, rec: 0.25 }], est: true, sizeInName: false, note: 'The vendor recommends 0.75 ml/min; on the ÄKTA prime the 1 MPa system limit allows only about 0.2–0.3 ml/min. Max flow for water at room temperature.' },
+  { names: ['ENrich SEC 70 10 x 300'], manufacturer: 'Bio-Rad', apps: ['sec'], p: 4.1, sizes: [{ cv: 24, flow: 1.5, rec: 0.5 }], sizeInName: false, note: '0.5–70 kDa. Recommended 0.5–1.5 ml/min. Limited to 1 MPa by the system.' },
+  { names: ['ENrich SEC 650 10 x 300'], manufacturer: 'Bio-Rad', apps: ['sec'], p: 4.1, sizes: [{ cv: 24, flow: 2.0, rec: 0.75 }], sizeInName: false, note: '5–650 kDa. Recommended 0.75–2.0 ml/min. Limited to 1 MPa by the system.' },
 ]
 
 const round1 = (x: number) => Math.round(x * 10) / 10
-
-/**
- * Heuristic default flow: 1 CV/min for cartridges up to 5 ml, otherwise half the max flow.
- * Without a max flow, 1 CV/min capped at 5 ml/min.
- */
-export function defaultRecFlow(cv: number, flow: number | null): number {
-  if (cv <= 5) return flow === null ? cv : Math.min(cv, flow)
-  return flow === null ? Math.min(cv, 5) : round1(flow * 0.5)
-}
 
 export function columnId(name: string): string {
   return name
@@ -111,10 +107,11 @@ function expand(e: Entry): Column[] {
         manufacturer: e.manufacturer,
         cv: s.cv,
         flow: s.flow,
-        rec: s.rec ?? defaultRecFlow(s.cv, s.flow),
+        rec: s.rec,
         p: s.p ?? e.p,
         apps: e.apps,
       }
+      if (e.est) col.recEstimated = true
       if (e.note) col.note = e.note
       return col
     }),

@@ -54,7 +54,7 @@ describe('templates (ml per phase)', () => {
     const c = col('HiLoad 16/600 Superdex 200 pg')
     const ph = templateFor('sec', c)
     expect(mls('sec', c)).toEqual([120, 2, 144])
-    expect(ph.every((p) => p.flow === 0.8 && !p.grad)).toBe(true)
+    expect(ph.every((p) => p.flow === 1 && !p.grad)).toBe(true)
   })
 
   test('pre-loaded column: no sample phase, wash then gradient', () => {

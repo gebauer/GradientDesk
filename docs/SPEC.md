@@ -51,7 +51,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
 - Clicking a card loads that application's template (this replaces the current program).
 
 ### Step 2 — Select a column
-- Table card (`#fff`, border, radius 6). Grid columns: `40px 1fr 120px 140px 160px 90px` → radio, Column (name, manufacturer below in 12 px muted), CV (ml), Max flow (ml/min), Pressure limit (MPa), tag. Max flow shows "–" when the vendor gives no value.
+- Table card (`#fff`, border, radius 6). Grid columns: `40px 1fr 100px 140px 140px 150px 90px` → radio, Column (name, manufacturer below in 12 px muted), CV (ml), Max flow (ml/min), Rec. flow (ml/min), Pressure limit (MPa), tag. Max flow shows "–" when the vendor gives no value. Rec. flow is the column's `rec`, the flow the templates use; estimated values show as "≈ 1" (tooltip "Estimated, no vendor value"), and the header tooltip explains the source.
   - Header: 11 px uppercase, letter-spacing .05em, `#6b6b68`.
   - Row: 14 px, padding 12 × 16, bottom border `#eeeeeb`, selected background `#f3f3f1`. The radio is a 14 px ring with an 8 px dot.
   - Custom columns show the "Custom" tag and an × button to remove them.
@@ -62,7 +62,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
   - **Vendor pills** below: "All vendors" plus one pill per vendor that has columns of the chosen type, with its count, most columns first, "Custom" last. Single select; clicking the active pill returns to All vendors. Pill: 28 px high, radius 14, border `#cfcfcb`, 12 px; active = ink fill, white text.
   - Empty result: "No columns match “…”." or "No columns for this type and vendor."
 - **Recent section**: the filtered list is split into "Recent" (the last 5 columns the user chose, newest first, then all custom columns) and "All columns" (the rest, library order), each under an 11 px uppercase section row on `#fafaf9`. Without recent or custom columns there are no section rows. Choosing a column, adding a custom column and opening a method count as use; loading a template or the automatic fallback after removing a custom column don't. Stored per browser in `gd.recentColumns`. The section is computed when the step opens (custom columns live), so a row the user clicks stays where it is and moves to Recent on the next visit.
-- Card "Add custom column", right label "Saved in this browser only". Grid `2fr 1fr 1fr 1fr auto`: Name, CV (ml), Max flow, Pressure (MPa), button "Add to library" (outline). Name, CV and flow are required. The new column is selected immediately.
+- Card "Add custom column", right label "Saved in this browser only". Grid `2fr 1fr 1fr 1fr 1fr auto`: Name, CV (ml), Max flow, Rec. flow (optional, placeholder 50 % of the max flow, must be > 0 and ≤ max flow), Pressure (MPa), button "Add to library" (outline). Name, CV and flow are required. The new column is selected immediately.
 - Changing the column clamps each phase's flow to the column's maximum flow. Columns without a max flow (`flow: null`) don't clamp.
 
 ### Step 3 — Program (main screen)
@@ -138,7 +138,7 @@ interface Phase { name:string; type:PhaseType; len:number; unit:'CV'|'ml';
   lines?:('B'|'A1'|…|'A8')[] /*pump wash only, wash order B, A8 … A1*/ }
 type ApplicationId = 'imac'|'affinity'|'iex'|'hic'|'sec'|'equil';
 interface Column { id:string; name:string; manufacturer:string; cv:number;
-  flow:number|null /*max ml/min; null = vendor gives no value*/; rec:number /*default flow*/;
+  flow:number|null /*max ml/min; null = vendor gives no value*/; rec:number /*recommended flow*/; recEstimated?:boolean;
   p:number /*MPa, lower of packed bed and hardware limit*/; apps:ApplicationId[]; note?:string; custom?:boolean }
 ```
 **Method data** (version 2). Stored as JSON in `localStorage` (`gd.methods`, `gd.current`) and written as the method block of the `.txt` (below); there is no JSON file export or import:
@@ -195,11 +195,11 @@ Source: `docs/data/columns-source.de.csv` (German, as provided). Code: `src/doma
 - Each product and each size is its own column ("HiTrap Q FF / SP FF" × "1 / 5 ml" → four columns). The size is part of the name for cartridges sold in several sizes ("HisTrap HP 5 ml"). IDs are the slugged name (`histrap-hp-5-ml`).
 - `p` is the lower of packed-bed and hardware limit. The system limit (ÄKTA prime: 1 MPa) is the constant `SYSTEM_MAX_PRESSURE`.
 - `flow` is `null` where the vendor gives no value ("k. A." in the source).
-- `rec` is a heuristic: 1 CV/min for cartridges ≤ 5 ml (capped at max flow), otherwise 50 % of max flow; without a max flow 1 CV/min capped at 5 ml/min. Explicit override: Superdex 200 Increase 10/300 GL → 0.3 ml/min (1 MPa system limit).
+- `rec` (recommended flow) comes from the source columns "empf. Fluss": the vendor's typical value; where only a range is given, its lower end (the range goes into the note). Where the source marks it as estimated ("empf. Fluss geschätzt: ja", e.g. columns without a vendor flow, or Superdex 200 Increase 10/300 GL at 0.25 ml/min because of the 1 MPa system limit), the column has `recEstimated: true`.
 - Applications: IMAC → `imac`; GST/Strep/MBP/Protein A/G/SUPrA/eXact → `affinity`; Q/S/DEAE/CM, Mono Q/S, UNOsphere, Macro-Prep, CHT → `iex`; Heparin → `affinity` and `iex`; Phenyl/Butyl/Octyl → `hic`; Superdex, ENrich, desalting → `sec`.
 - Vendor notes are kept in `note` (English).
 
-Values are unverified; check them against the vendor datasheets later. A custom column gets rec flow = 50 % of its max flow.
+Values are unverified; check them against the vendor datasheets later. A custom column gets the entered rec flow, otherwise 50 % of its max flow (marked as estimated).
 
 ## State Management
 - `app`, `colId`, `phases[]`, `sel` (selected phase index), `step` (1–4), `methodName`

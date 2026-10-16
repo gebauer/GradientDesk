@@ -39,7 +39,7 @@ export interface State {
 export type Action =
   | { type: 'loadApp'; app: ApplicationId }
   | { type: 'selectColumn'; id: string }
-  | { type: 'addCustomColumn'; name: string; cv: number; flow: number; p: number; id: string }
+  | { type: 'addCustomColumn'; name: string; cv: number; flow: number; p: number; id: string; /** Default: 50 % of max flow. */ rec?: number }
   | { type: 'removeCustomColumn'; id: string }
   | { type: 'selectPhase'; index: number }
   | { type: 'updatePhase'; index: number; patch: Partial<Phase> }
@@ -97,7 +97,8 @@ export function reducer(s: State, a: Action): State {
       return { ...s, colId: col.id, phases: clampFlows(s.phases, col), recentColumns: touchRecent(s.recentColumns, col.id) }
     }
     case 'addCustomColumn': {
-      const col: Column = { id: a.id, name: a.name, manufacturer: '', cv: a.cv, flow: a.flow, rec: customRecFlow(a.flow), p: a.p, apps: [], custom: true }
+      const col: Column = { id: a.id, name: a.name, manufacturer: '', cv: a.cv, flow: a.flow, rec: a.rec ?? customRecFlow(a.flow), p: a.p, apps: [], custom: true }
+      if (a.rec === undefined) col.recEstimated = true
       const next = { ...s, customColumns: [...s.customColumns, col] }
       return reducer(next, { type: 'selectColumn', id: col.id })
     }

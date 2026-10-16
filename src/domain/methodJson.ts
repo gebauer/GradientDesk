@@ -94,6 +94,7 @@ function readColumn(x: unknown): Column {
     p: num(x.p) || 0.5,
     apps: Array.isArray(x.apps) ? x.apps.filter((a): a is ApplicationId => APP_IDS.includes(a as ApplicationId)) : [],
   }
+  if (x.recEstimated === true) col.recEstimated = true
   if (typeof x.note === 'string') col.note = x.note
   if (x.custom === true) col.custom = true
   return col

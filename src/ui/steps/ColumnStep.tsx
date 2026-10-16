@@ -1,12 +1,14 @@
 import { useState, type ChangeEvent } from 'react'
-import { COLUMN_TYPES, columnsOfType, defaultColumnType, filterColumns, splitRecent, vendorCounts, type ColumnType } from '../../domain/columns'
+import { COLUMN_TYPES, columnsOfType, customRecFlow, defaultColumnType, filterColumns, splitRecent, vendorCounts, type ColumnType } from '../../domain/columns'
 import type { Column } from '../../domain/types'
 import { APPLICATIONS } from '../../domain/templates'
 import { allColumns, type Action, type State } from '../../state/store'
 import { fmt } from '../format'
 import { StepHeader } from '../StepHeader'
 
-const EMPTY = { name: '', cv: '', flow: '', p: '' }
+const EMPTY = { name: '', cv: '', flow: '', rec: '', p: '' }
+
+const REC_HINT = 'Recommended flow, used by the templates: the vendor value, or the lower end of the vendor range. ≈ marks an estimate where the vendor gives none.'
 
 export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Action) => void }) {
   const app = APPLICATIONS.find((a) => a.id === state.app)
@@ -29,12 +31,13 @@ export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Ac
 
   const cv = parseFloat(draft.cv)
   const flow = parseFloat(draft.flow)
+  const rec = parseFloat(draft.rec)
   const p = parseFloat(draft.p)
-  const canAdd = draft.name.trim() !== '' && cv > 0 && flow > 0
+  const canAdd = draft.name.trim() !== '' && cv > 0 && flow > 0 && (draft.rec === '' || (rec > 0 && rec <= flow))
 
   const add = () => {
     if (!canAdd) return
-    dispatch({ type: 'addCustomColumn', id: `custom-${Date.now()}`, name: draft.name.trim(), cv, flow, p: p > 0 ? p : 0.5 })
+    dispatch({ type: 'addCustomColumn', id: `custom-${Date.now()}`, name: draft.name.trim(), cv, flow, rec: rec > 0 ? rec : undefined, p: p > 0 ? p : 0.5 })
     setDraft(EMPTY)
   }
 
@@ -72,6 +75,9 @@ export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Ac
         </div>
         <div className="num">{fmt(c.cv)}</div>
         <div className="num">{c.flow === null ? '–' : fmt(c.flow)}</div>
+        <div className="num" title={c.recEstimated ? 'Estimated, no vendor value' : undefined}>
+          {c.recEstimated ? `≈ ${fmt(c.rec)}` : fmt(c.rec)}
+        </div>
         <div className="num">{fmt(c.p, 2)}</div>
         <div className="col-tag">
           {c.custom && (
@@ -157,6 +163,9 @@ export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Ac
           <div>Column</div>
           <div className="num">CV (ml)</div>
           <div className="num">Max flow (ml/min)</div>
+          <div className="num" title={REC_HINT}>
+            Rec. flow (ml/min)
+          </div>
           <div className="num">Pressure limit (MPa)</div>
           <div />
         </div>
@@ -202,6 +211,19 @@ export function ColumnStep({ state, dispatch }: { state: State; dispatch: (a: Ac
           <label className="field">
             Max flow
             <input className="input" type="number" min="0" step="any" value={draft.flow} onChange={set('flow')} required />
+          </label>
+          <label className="field">
+            Rec. flow
+            <input
+              className="input"
+              type="number"
+              min="0"
+              step="any"
+              value={draft.rec}
+              onChange={set('rec')}
+              placeholder={flow > 0 ? fmt(customRecFlow(flow)) : '50 % of max'}
+              aria-invalid={draft.rec !== '' && !(rec > 0 && (!(flow > 0) || rec <= flow)) ? true : undefined}
+            />
           </label>
           <label className="field">
             Pressure (MPa)

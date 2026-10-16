@@ -473,7 +473,7 @@ button:disabled {
 
 .col-grid {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 120px 140px 160px 90px;
+  grid-template-columns: 40px minmax(0, 1fr) 100px 140px 140px 150px 90px;
   align-items: center;
 }
 
@@ -552,7 +552,7 @@ button:disabled {
 
 .custom-grid {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)) auto;
+  grid-template-columns: minmax(0, 2fr) repeat(4, minmax(0, 1fr)) auto;
   gap: 12px;
   align-items: end;
 }

@@ -138,6 +138,11 @@ describe('library', () => {
     expect(r.slot).toBe(7)
   })
 
+  test('a custom column takes the given recommended flow, otherwise half its max flow', () => {
+    const s = run(initialState(), { type: 'addCustomColumn', id: 'c1', name: 'A', cv: 2, flow: 4, p: 0.3, rec: 1.5 }, { type: 'addCustomColumn', id: 'c2', name: 'B', cv: 2, flow: 4, p: 0.3 })
+    expect(s.customColumns.map((c) => c.rec)).toEqual([1.5, 2])
+  })
+
   test('custom columns survive a reload', () => {
     const s = run(initialState(), { type: 'addCustomColumn', id: 'custom-1', name: 'Gravity 2 ml', cv: 2, flow: 4, p: 0.3 })
     storage.saveCustomColumns(s.customColumns)

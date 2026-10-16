@@ -11,7 +11,7 @@ import type { Method, Phase } from './types'
 const CRLF = '\r\n'
 const RULE = '*'.repeat(65)
 const MARKER = '** GradientDesk method'
-const BOOL_KEYS = new Set(['gradient', 'autozero', 'custom'])
+const BOOL_KEYS = new Set(['gradient', 'autozero', 'custom', 'recEstimated'])
 
 /** Values must be ASCII: backslash and non-ASCII become \\ and \uXXXX; leading/trailing spaces are kept as  . */
 export function escapeValue(s: string): string {
@@ -58,6 +58,7 @@ export function methodBlock(m: Method): string[] {
       cv: c.cv,
       flow: c.flow,
       rec: c.rec,
+      recEstimated: c.recEstimated ? true : undefined,
       p: c.p,
       apps: c.apps,
       note: c.note,

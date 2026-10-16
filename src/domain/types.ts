@@ -45,8 +45,10 @@ export interface Column {
   cv: number
   /** Max flow in ml/min; null when the vendor gives no value (no clamping, no warning). */
   flow: number | null
-  /** Default flow in ml/min used by templates. */
+  /** Recommended flow in ml/min, used by templates. */
   rec: number
+  /** rec is an estimate, not a vendor value. */
+  recEstimated?: boolean
   /** Column pressure limit in MPa (lower of packed bed and hardware limit). */
   p: number
   /** Applications this column is listed under. "general", "preloaded" and "equil" list every column regardless. */
