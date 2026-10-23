@@ -82,6 +82,21 @@ describe('validation', () => {
     expect(validatePhase(phase({ type: 'pumpwash', inj: 'Waste', lines: [] }), 0, column).map((i) => [i.field, i.level])).toEqual([['lines', 'error']])
   })
 
+  test('Inject on an inlet other than A1 is a warning', () => {
+    expect(validatePhase(phase({ type: 'sample', inj: 'Inject', inlet: 8 }), 0, column)).toEqual([
+      { phase: 0, field: 'inlet', level: 'warning', message: 'Inject pushes the sample loop with inlet A8; loop injections normally run on A1.' },
+    ])
+    expect(validatePhase(phase({ type: 'sample', inj: 'Inject', inlet: 1 }), 0, column)).toEqual([])
+    expect(validatePhase(phase({ type: 'sample', inj: 'Load', inlet: 8, len: 60, unit: 'ml' }), 0, column)).toEqual([])
+  })
+
+  test('a sample on Load of 50 ml or less is a warning', () => {
+    const message = 'Loading over the system pump makes sense above 50 ml; inject smaller samples over a sample loop.'
+    expect(validatePhase(phase({ type: 'sample', inj: 'Load', inlet: 8, len: 50, unit: 'ml' }), 0, column)).toEqual([{ phase: 0, field: 'len', level: 'warning', message }])
+    expect(validatePhase(phase({ type: 'sample', inj: 'Load', inlet: 8, len: 50.5, unit: 'ml' }), 0, column)).toEqual([])
+    expect(validatePhase(phase({ type: 'wash', inj: 'Load', len: 5, unit: 'ml' }), 0, column)).toEqual([])
+  })
+
   test('invalid values are errors', () => {
     const issues = validatePhase(phase({ len: 0, b0: 120, flow: 0, frac: -1, inlet: 9 as Phase['inlet'] }), 2, column)
     expect(issues.map((i) => [i.field, i.level])).toEqual([

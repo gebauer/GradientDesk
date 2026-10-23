@@ -1,5 +1,6 @@
 import { calcProgram, expandPhases, phaseMl, stepsBefore } from './calc'
 import { SYSTEM_MAX_PRESSURE } from './columns'
+import { PUMP_LOAD_MIN_ML } from './templates'
 import type { Column, Phase } from './types'
 
 export type IssueField = 'len' | 'b0' | 'b1' | 'flow' | 'frac' | 'inlet' | 'lines'
@@ -42,7 +43,13 @@ export function validatePhase(p: Phase, i: number, column: Column): Issue[] {
   if (p.grad && p.b0 !== p.b1 && ml > 0 && ml < STEEP_GRADIENT_ML) {
     warn('len', `Steep gradient over ${fmt(ml)} ml: the ${MIXER_VOLUME} ml mixer smooths gradients shorter than ${STEEP_GRADIENT_ML} ml, so the real gradient will be shallower.`)
   }
+  if (p.type === 'sample' && p.inj === 'Load' && ml > 0 && ml <= PUMP_LOAD_MIN_ML) {
+    warn('len', `Loading over the system pump makes sense above ${PUMP_LOAD_MIN_ML} ml; inject smaller samples over a sample loop.`)
+  }
   if (!(Number.isInteger(p.inlet) && p.inlet >= 1 && p.inlet <= 8)) err('inlet', 'Inlet must be A1–A8.')
+  else if (p.inj === 'Inject' && p.inlet !== 1) {
+    warn('inlet', `Inject pushes the sample loop with inlet A${p.inlet}; loop injections normally run on A1.`)
+  }
   return issues
 }
 

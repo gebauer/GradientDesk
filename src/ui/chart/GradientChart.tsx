@@ -91,6 +91,8 @@ export function GradientChart({ phases, calc, column, sel, dragDomain, dispatch,
   const segCalc = calcProgram(segs, column)
   const line = segCalc.phases.map((c) => `${g.x(c.v0)},${g.y(c.b0)} ${g.x(c.v1)},${g.y(c.b1)}`).join(' ')
   const flowLine = segCalc.phases.map((c, i) => `${g.x(c.v0)},${yf(segs[i].flow)} ${g.x(c.v1)},${yf(segs[i].flow)}`).join(' ')
+  /** Autozero runs at the start breakpoint of its segment (a pump wash: first line only). */
+  const autozeros = segCalc.phases.filter((_, i) => segs[i].az).map((c) => c.v0)
   /** Pump wash %B comes from its lines; it is edited in the form, not dragged. */
   const draggable = (p: Phase) => p.type !== 'pumpwash'
 
@@ -108,6 +110,12 @@ export function GradientChart({ phases, calc, column, sel, dragDomain, dispatch,
         <div>
           <span style={{ width: 1, height: 8, background: 'var(--text-secondary)' }} />
           Fractions
+        </div>
+        <div>
+          <svg width={8} height={7} viewBox="0 0 8 7">
+            <path d="M0 0h8L4 7z" fill="var(--ink)" />
+          </svg>
+          Autozero
         </div>
       </div>
       <div className="chart" ref={ref}>
@@ -170,6 +178,12 @@ export function GradientChart({ phases, calc, column, sel, dragDomain, dispatch,
               </text>
             </g>
           )}
+          {autozeros.map((v) => (
+            <g key={v} pointerEvents="none">
+              <line x1={g.x(v)} x2={g.x(v)} y1={PAD.top} y2={H - PAD.bottom} stroke="var(--ink)" strokeOpacity={0.35} strokeDasharray="1 2" />
+              <path d={`M${g.x(v) - 4} ${PAD.top - 16}h8l-4 7z`} fill="var(--ink)" />
+            </g>
+          ))}
           <path d={fracPath || 'M0 0'} stroke="var(--text-secondary)" strokeWidth={1} pointerEvents="none" />
           <polyline points={flowLine} fill="none" stroke="var(--chart-flow)" strokeDasharray="4 3" strokeWidth={1.5} pointerEvents="none" />
           <polyline points={line} fill="none" stroke="var(--ink)" strokeWidth={2} pointerEvents="none" />

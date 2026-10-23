@@ -40,7 +40,7 @@ describe('JSON round trip', () => {
     const f = toMethodFile(method())
     expect(f.phases[3]).toEqual({
       name: 'Elution', type: 'elution', length: 20, unit: 'CV', startB: 5, endB: 100,
-      gradient: true, flow: 5, flowDefault: true, fraction: 2, inletA: 1, injection: 'Load', autozero: true,
+      gradient: true, flow: 5, flowDefault: true, fraction: 2, inletA: 1, injection: 'Load', autozero: false,
     })
   })
 

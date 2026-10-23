@@ -18,8 +18,8 @@ describe('templates (ml per phase)', () => {
     const c = col('HisTrap HP 5 ml')
     const ph = templateFor('imac', c)
     expect(mls('imac', c)).toEqual([25, 25, 50, 100, 25, 25])
-    expect(ph[1]).toMatchObject({ type: 'sample', inlet: 8, flow: 1 })
-    expect(ph[3]).toMatchObject({ b0: 5, b1: 100, grad: true, frac: 2, az: true })
+    expect(ph[1]).toMatchObject({ type: 'sample', inlet: 1, inj: 'Inject', flow: 1 })
+    expect(ph[3]).toMatchObject({ b0: 5, b1: 100, grad: true, frac: 2, az: false })
     expect(calcProgram(ph, c).time).toBe(70)
   })
 
@@ -57,12 +57,36 @@ describe('templates (ml per phase)', () => {
     expect(ph.every((p) => p.flow === 1 && !p.grad)).toBe(true)
   })
 
+  test('one autozero, at the end of the first phase', () => {
+    for (const app of APPLICATIONS) {
+      expect(templateFor(app.id, col('HisTrap HP 5 ml')).map((p) => p.az).indexOf(true)).toBe(1)
+      expect(templateFor(app.id, col('HisTrap HP 5 ml')).filter((p) => p.az)).toHaveLength(1)
+    }
+  })
+
+  test('sample phases inject the loop with buffer from A1, except loading over the system pump', () => {
+    for (const app of APPLICATIONS.filter((a) => a.id !== 'pumpload')) {
+      for (const p of templateFor(app.id, col('HisTrap HP 5 ml')).filter((q) => q.type === 'sample')) {
+        expect(p).toMatchObject({ inlet: 1, inj: 'Inject' })
+      }
+    }
+  })
+
+  test('load over the system pump: more than 50 ml through A8 on Load, no warnings', () => {
+    const c = col('HisTrap HP 5 ml')
+    const ph = templateFor('pumpload', c)
+    expect(mls('pumpload', c)).toEqual([25, 100, 50, 100, 25])
+    expect(ph[1]).toMatchObject({ type: 'sample', len: 100, unit: 'ml', inlet: 8, inj: 'Load', flow: 1, az: true })
+    expect(ph[2]).toMatchObject({ type: 'wash', inlet: 1, inj: 'Load' })
+    expect(validateProgram(ph, c)).toEqual([])
+  })
+
   test('pre-loaded column: no sample phase, wash then gradient', () => {
     const c = col('HisTrap HP 5 ml')
     const ph = templateFor('preloaded', c)
     expect(mls('preloaded', c)).toEqual([25, 100, 25, 25])
-    expect(ph.some((p) => p.type === 'sample' || p.inlet === 8)).toBe(false)
-    expect(ph[0]).toMatchObject({ type: 'wash', az: true })
+    expect(ph.some((p) => p.type === 'sample' || p.inj === 'Inject')).toBe(false)
+    expect(ph[0]).toMatchObject({ type: 'wash', az: false })
     expect(ph[1]).toMatchObject({ type: 'elution', b0: 0, b1: 100, grad: true, frac: 2, az: true })
     expect(defaultSelection(ph)).toBe(1)
   })
@@ -103,7 +127,8 @@ test('injection valve default follows the phase type', () => {
   expect(PHASE_TYPES.map((t) => [t.id, defaultInj(t.id)])).toEqual([
     ['equil', 'Load'], ['sample', 'Inject'], ['wash', 'Load'], ['elution', 'Load'], ['strip', 'Load'], ['pumpwash', 'Waste'],
   ])
-  for (const app of APPLICATIONS) {
+  // Loading over the system pump puts its sample on Load.
+  for (const app of APPLICATIONS.filter((a) => a.id !== 'pumpload')) {
     const c = columnsFor(app.id, SEED_COLUMNS)[0]
     expect(templateFor(app.id, c).every((p) => p.inj === defaultInj(p.type)), app.id).toBe(true)
   }
@@ -112,7 +137,7 @@ test('injection valve default follows the phase type', () => {
 test('gradient elutions run 30 CV below 3 ml, 20 CV from 3 ml', () => {
   const c = col('HisTrap HP 1 ml')
   expect([gradientCV({ ...c, cv: 2.9 }), gradientCV({ ...c, cv: 3 })]).toEqual([30, 20])
-  for (const app of ['general', 'preloaded', 'imac', 'iex', 'hic'] as const) {
+  for (const app of ['general', 'preloaded', 'pumpload', 'imac', 'iex', 'hic'] as const) {
     expect(templateFor(app, c).find((p) => p.type === 'elution'), app).toMatchObject({ len: 30, unit: 'CV', grad: true })
     expect(templateFor(app, col('HisTrap HP 5 ml')).find((p) => p.type === 'elution'), app).toMatchObject({ len: 20 })
   }

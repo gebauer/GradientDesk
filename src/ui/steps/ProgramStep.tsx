@@ -219,7 +219,6 @@ export function ProgramStep({ state, dispatch }: { state: State; dispatch: (a: A
                     {INLETS.map((i) => (
                       <option key={i} value={i}>
                         A{i}
-                        {i === 8 ? ' (sample)' : ''}
                       </option>
                     ))}
                   </select>

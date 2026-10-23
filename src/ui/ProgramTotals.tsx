@@ -35,7 +35,7 @@ export function ProgramTotals({ phases, column }: { phases: readonly Phase[]; co
           <dl className="totals-group totals-buffers" aria-label="Buffer use">
             {t.buffers.map((b) => (
               <div key={b.line} className="totals-row">
-                <dt>{b.line === 'B' ? 'Buffer B' : `Inlet ${b.line}${b.line === 'A8' ? ' (sample)' : ''}`}</dt>
+                <dt>{b.line === 'B' ? 'Buffer B' : `Inlet ${b.line}`}</dt>
                 <dd>{fmt(b.ml)} ml</dd>
               </div>
             ))}

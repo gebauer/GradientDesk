@@ -159,7 +159,7 @@ function pumpLine(r: Row, b1: number): PumpLine | null {
 
 function guessType(r: Row, b1: number, first: boolean): PhaseType {
   if (pumpLine(r, b1)) return 'pumpwash'
-  if (r.inlet === 8 || r.inj === 'Inject') return 'sample'
+  if (r.inj === 'Inject') return 'sample'
   if (r.conc !== b1) return 'elution'
   if (r.conc >= 99) return 'strip'
   return first ? 'equil' : 'wash'

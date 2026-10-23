@@ -47,7 +47,7 @@ Vite + React 19 (latest stable) + TypeScript (strict). Node 24 LTS (`.nvmrc`). P
 - **CV**: column volume (ml)
 - **%B**: concentration of buffer B
 - **Breakpoint**: a row in the PrimeView table at a given volume
-- **Inlet A**: position of the inlet valve (A1–A8; A8 is used for the sample)
+- **Inlet A**: position of the inlet valve (A1–A8). Sample loop injections (Inject) run on A1; only loading over the system pump (> 50 ml, valve Load) draws the sample through A8
 - **Injection valve**: Load (pump → column), Inject (pump → loop → column), Waste (pump → waste, column bypassed; used by the pump wash phase)
 - **Pump wash**: one phase with checked lines (B, A1–A8) and a volume per line (default 40 ml at 10 ml/min, Waste); runs and exports as one segment per line in the order B, A8 … A1
 - **Autozero**: zero the UV signal at that breakpoint
@@ -56,7 +56,7 @@ Vite + React 19 (latest stable) + TypeScript (strict). Node 24 LTS (`.nvmrc`). P
 ## Decisions
 - ÄKTA prime and prime plus are treated as identical; no separate system variant.
 - Seed column library comes from `docs/data/columns-source.de.csv`; values are unverified until checked against datasheets. Unknown max flow is `null`, never a guess.
-- Applications: General (default, all columns), Elute pre-loaded column (all columns, no sample phase), IMAC, affinity, IEX, HIC, SEC (incl. desalting), column equilibration. The affinity and HIC templates are proposals pending review.
+- Applications: General (default, all columns), Elute pre-loaded column (all columns, no sample phase), Load & elute over system pump (all columns, sample > 50 ml on A8 with Load), IMAC, affinity, IEX, HIC, SEC (incl. desalting), column equilibration. The affinity and HIC templates are proposals pending review.
 - PrimeView export is the ÄKTA prime method dump format, spec in `docs/primeview-format.md`. Breakpoints: one per phase start, final end; on a %B step the phase ends at its volume and the next start follows at +0.1 ml (same-volume breakpoints don't work on the instrument). Files are `PrimeMeth_NNN.txt` (1–99).
 - The ÄKTA prime has a 4 ml mixer: gradients over less than 10 ml get a warning.
 - License: MIT.

@@ -25,12 +25,14 @@ describe('seed column library', () => {
   })
 
   test('every application lists columns', () => {
-    const apps: ApplicationId[] = ['general', 'preloaded', 'imac', 'affinity', 'iex', 'hic', 'sec', 'equil']
+    const apps: ApplicationId[] = ['general', 'preloaded', 'pumpload', 'imac', 'affinity', 'iex', 'hic', 'sec', 'equil']
     for (const app of apps) expect(columnsFor(app, SEED_COLUMNS).length, app).toBeGreaterThan(0)
     expect(columnsFor('equil', SEED_COLUMNS)).toHaveLength(SEED_COLUMNS.length)
     expect(columnsFor('general', SEED_COLUMNS)).toHaveLength(SEED_COLUMNS.length)
     expect(columnsFor('preloaded', SEED_COLUMNS)).toHaveLength(SEED_COLUMNS.length)
+    expect(columnsFor('pumpload', SEED_COLUMNS)).toHaveLength(SEED_COLUMNS.length)
     expect(defaultColumnType('preloaded')).toBe('all')
+    expect(defaultColumnType('pumpload')).toBe('all')
   })
 
   test('expands sizes and product groups', () => {

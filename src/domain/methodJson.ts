@@ -43,7 +43,7 @@ export interface MethodFile {
 
 export const CURRENT_VERSION = 3
 
-const APP_IDS: readonly ApplicationId[] = ['general', 'preloaded', 'imac', 'affinity', 'iex', 'hic', 'sec', 'equil']
+const APP_IDS: readonly ApplicationId[] = ['general', 'preloaded', 'pumpload', 'imac', 'affinity', 'iex', 'hic', 'sec', 'equil']
 const PHASE_TYPES: readonly PhaseType[] = ['equil', 'sample', 'wash', 'elution', 'strip', 'pumpwash']
 
 export class MethodImportError extends Error {}

@@ -9,10 +9,9 @@ const histrap5 = SEED_COLUMNS.find((c) => c.id === 'histrap-hp-5-ml') as Column
 test('IMAC on HisTrap HP 5 ml: volume, time, fractions and buffer use per line', () => {
   const t = programTotals(templateFor('imac', histrap5), histrap5)
   expect(t).toMatchObject({ volume: 250, time: 70, fractions: 50, fractionMl: 100, fractionSizes: [2] })
-  // A1: 25 + 50 × 0.95 + 100 × (1 − 0.525) + 25; A8: sample 25; B: 50 × 0.05 + 100 × 0.525 + 25
+  // A1: 25 + sample 25 (pushes the loop) + 50 × 0.95 + 100 × (1 − 0.525) + 25; B: 50 × 0.05 + 100 × 0.525 + 25
   expect(t.buffers).toEqual([
-    { line: 'A1', ml: 145 },
-    { line: 'A8', ml: 25 },
+    { line: 'A1', ml: 170 },
     { line: 'B', ml: 80 },
   ])
 })

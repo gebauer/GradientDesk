@@ -1,4 +1,4 @@
-export type ApplicationId = 'general' | 'preloaded' | 'imac' | 'affinity' | 'iex' | 'hic' | 'sec' | 'equil'
+export type ApplicationId = 'general' | 'preloaded' | 'pumpload' | 'imac' | 'affinity' | 'iex' | 'hic' | 'sec' | 'equil'
 
 export type PhaseType = 'equil' | 'sample' | 'wash' | 'elution' | 'strip' | 'pumpwash'
 
@@ -53,7 +53,7 @@ export interface Column {
   recEstimated?: boolean
   /** Column pressure limit in MPa (lower of packed bed and hardware limit). */
   p: number
-  /** Applications this column is listed under. "general", "preloaded" and "equil" list every column regardless. */
+  /** Applications this column is listed under. "general", "preloaded", "pumpload" and "equil" list every column regardless. */
   apps: ApplicationId[]
   note?: string
   custom?: boolean

@@ -60,7 +60,9 @@ describe('method block', () => {
   })
 
   test('still reads files with the older block after the breakpoint table', () => {
-    expect(imported(golden('legacy-trailing-block.txt'))).toEqual(method())
+    // Written by an older version whose IMAC template loaded the sample on A8 and autozeroed at 0 ml and the elution.
+    const phases = method().phases.map((p) => (p.type === 'sample' ? { ...p, inlet: 8 as const, az: false } : { ...p, az: p.type === 'elution' || p.name === 'Equilibration' }))
+    expect(imported(golden('legacy-trailing-block.txt'))).toEqual(method({ phases }))
   })
 
   test('is ASCII with CRLF on every line', () => {

@@ -21,6 +21,8 @@ const samplePhases: Phase[] = [
   P({ name: 'Wash', type: 'wash', len: 14 }),
   P({ name: 'Elution', type: 'elution', len: 70, b1: 100, grad: true, frac: 1.5 }),
 ]
+/** What the import makes of it: without Inject, the pump-loaded sample (A8, Load) reads as a wash. */
+const importedSample: Phase[] = samplePhases.map((p) => (p.type === 'sample' ? { ...p, name: 'Wash', type: 'wash' } : p))
 const lowPressureColumn: Column = { id: 'x', name: 'X', manufacturer: '', cv: 1, flow: 4, rec: 1, p: 0.1, apps: [] }
 
 describe('export', () => {
@@ -67,7 +69,7 @@ describe('export', () => {
   })
 
   test('the credit lines don\'t change what is imported', () => {
-    expect(fromPrimeViewTxt(toPrimeViewTxt(samplePhases, lowPressureColumn, info)).phases).toEqual(samplePhases)
+    expect(fromPrimeViewTxt(toPrimeViewTxt(samplePhases, lowPressureColumn, info)).phases).toEqual(importedSample)
   })
 
   test('ASCII, CRLF on every line, starts with an empty line, no tabs', () => {
@@ -143,8 +145,13 @@ describe('breakpoints', () => {
 describe('import', () => {
   test('reads the PrimeView sample into phases', () => {
     const { phases, warnings } = fromPrimeViewTxt(golden('sample-imac-gradient.txt'))
-    expect(phases).toEqual(samplePhases)
+    expect(phases).toEqual(importedSample)
     expect(warnings).toEqual([])
+  })
+
+  test('only Inject makes a sample phase, not the inlet', () => {
+    const txt = toPrimeViewTxt([P({ len: 5 }), P({ len: 5, inlet: 8 }), P({ len: 5, inj: 'Inject' })], lowPressureColumn)
+    expect(fromPrimeViewTxt(txt).phases.map((p) => p.type)).toEqual(['equil', 'wash', 'sample'])
   })
 
   test('accepts unpadded fields and missing empty lines', () => {
@@ -154,9 +161,9 @@ describe('import', () => {
       .map((l) => (l.startsWith(',') ? l.replace(/ +/g, '').replace(/,/g, ' , ') : l))
       .join('\r\n')
     expect(loose).toContain(' , 2 , 2.0 , 0 , 1.0 , 0.0 , 8 , Load , 0 , Y , N')
-    expect(fromPrimeViewTxt(loose).phases).toEqual(samplePhases)
+    expect(fromPrimeViewTxt(loose).phases).toEqual(importedSample)
     const tight = golden('sample-imac-gradient.txt').replace(/^(,.*)$/gm, (l) => l.replace(/ +/g, ''))
-    expect(fromPrimeViewTxt(tight).phases).toEqual(samplePhases)
+    expect(fromPrimeViewTxt(tight).phases).toEqual(importedSample)
   })
 
   test('accepts LF line endings', () => {

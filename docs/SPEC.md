@@ -1,7 +1,7 @@
 # Handoff: GradientDesk (ÄKTA prime)
 
 ## Overview
-A browser app for planning typical chromatography runs on an ÄKTA prime / prime plus. The user picks an application (General, Elute pre-loaded column, IMAC, affinity, IEX, HIC, SEC / desalting, column equilibration), then a column (library or custom). The app loads a template program, which the user edits either graphically (drag handles in a %B-over-volume chart) or phase by phase in a form. The result is exported as a PrimeView-compatible breakpoint table (`.txt`). Methods are stored in the browser and exchanged as the `.txt` file, which carries the complete method in a comment block at the end. Existing `.txt` files can be imported and edited.
+A browser app for planning typical chromatography runs on an ÄKTA prime / prime plus. The user picks an application (General, Elute pre-loaded column, Load & elute over system pump, IMAC, affinity, IEX, HIC, SEC / desalting, column equilibration), then a column (library or custom). The app loads a template program, which the user edits either graphically (drag handles in a %B-over-volume chart) or phase by phase in a form. The result is exported as a PrimeView-compatible breakpoint table (`.txt`). Methods are stored in the browser and exchanged as the `.txt` file, which carries the complete method in a comment block at the end. Existing `.txt` files can be imported and edited.
 
 UI language: **English**. Users: mixed lab staff, teaching and practical courses.
 
@@ -44,7 +44,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
 
 ### Step 1 — Choose an application
 - Description: "Loads a starting program with typical phases. Everything can be changed later."
-- 2-column grid of cards, gap 14 px, four rows: General | Elute pre-loaded column, IMAC | Affinity, Ion exchange | HIC, Size exclusion | Column equilibration. A fresh start (nothing stored) loads General. Card: `#fff`, padding 20 px, radius 6 px, border 1 px `#dcdcd8` (selected: 1.5 px `#1d1d1c`).
+- 2-column grid of cards, gap 14 px, five rows: General | Elute pre-loaded column, Load & elute over system pump | IMAC, Affinity | Ion exchange, HIC | Size exclusion, Column equilibration. A fresh start (nothing stored) loads General. Card: `#fff`, padding 20 px, radius 6 px, border 1 px `#dcdcd8` (selected: 1.5 px `#1d1d1c`).
   - Name 16 px / 600, right: "N columns" 12 px muted.
   - Description 13 px `#55554f`, line-height 1.45.
   - Phase preview: a row of 6 px bars in the phase color with labels (11 px) underneath.
@@ -56,7 +56,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
   - Row: 14 px, padding 12 × 16, bottom border `#eeeeeb`, selected background `#f3f3f1`. The radio is a 14 px ring with an 8 px dot.
   - Custom columns show the "Custom" tag and an × button to remove them.
   - **Filters** above the table, preset from the application but always changeable (picking a column of another type keeps the loaded program):
-  - **Type** select (170 px): All types, IMAC, Affinity, Ion exchange, HIC, SEC / desalting. Preset to the step 1 application; General, Elute pre-loaded column and Column equilibration preset to All types. Custom columns belong to every type.
+  - **Type** select (170 px): All types, IMAC, Affinity, Ion exchange, HIC, SEC / desalting. Preset to the step 1 application; General, Elute pre-loaded column, Load & elute over system pump and Column equilibration preset to All types. Custom columns belong to every type.
   - **Search** input (max 480 px, placeholder "Search by name, manufacturer or size, e.g. superdex 200, 5 ml"). Every word must appear in name, manufacturer or size ("5 ml"), case-insensitive. Escape clears it.
   - Muted count "n of m columns" (m = all columns).
   - **Vendor pills** below: "All vendors" plus one pill per vendor that has columns of the chosen type, with its count, most columns first, "Custom" last. Single select; clicking the active pill returns to All vendors. Pill: 28 px high, radius 14, border `#cfcfcb`, 12 px; active = ink fill, white text.
@@ -68,7 +68,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
 
 ### Step 3 — Program (main screen)
 - Description: "{App} on {Column} · drag a handle to change length and %B, drag a flat line to move it up or down, right-click a phase for more".
-- **Chart card** (`#fff`, border, radius 6, padding 12 16 8). Legend: Conc %B (2 px solid line), Flow (dashed), Fractions (ticks). The SVG is 1104 × 240.
+- **Chart card** (`#fff`, border, radius 6, padding 12 16 8). Legend: Conc %B (2 px solid line), Flow (dashed), Fractions (ticks), Autozero (triangle). The SVG is 1104 × 240.
   - Padding: left 36, right 8, top 24, bottom 26.
   - X axis: volume in ml, auto tick step from {0.5,1,2,5,10,20,25,50,100,200,500} so there are ≤ 12 ticks. The "ml" unit label sits at the right.
   - Y axis: 0/25/50/75/100 %, gridlines in black at 8 % opacity.
@@ -77,6 +77,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
   - Flow line: dashed `4 3`, 1.5 px `#8a8a86`, on its own scale (max = max(column max, phase flows) × 1.15).
   - Column max flow: dotted red line `oklch(0.6 0.15 25)` with the label "column max X ml/min". Not drawn when the column has no max flow.
   - Fraction ticks: 6 px vertical marks under the plot, one per fraction volume.
+  - Autozero: at each breakpoint with Autozero (a pump wash: its first line only), a filled ink triangle (8 px wide, 7 px high, pointing down) above the phase color bar and a dotted `1 2` ink line at 35 % opacity through the plot.
   - **Level lines**: isocratic phases have an invisible 12 px hit line along their %B line (cursor ns-resize, faint highlight on hover). Dragging it changes Start and End %B together; length stays.
   - **Context menu**: right-click (or menu key / Shift+F10) on a phase band, level line or phase list row selects the phase and opens a menu at the pointer: "Add phase before", "Add phase after", "Delete phase" (red, disabled with one phase). Popover style, 180 px min width; closes on Escape, outside click, scroll.
   - **Handles**: one at the end of each phase (v1, %B end), except pump wash phases (no handle, no level line; edited in the form). Visible circle r=5, white (selected: phase color), 1.5 px ink stroke. Invisible hit area r=12, cursor move.
@@ -91,9 +92,9 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
     - Gradient toggle: "Linear gradient" / "Isocratic"
     - Flow (ml/min), with a checkbox "Default" to the right of the input. Checked, the phase runs at the method's standard flow, shown in grey, and follows it when it changes; typing a value or unchecking makes it the phase's own flow. Template phases at the column's recommended flow, and phases added after or before one of them, start as Default. The border turns red when above the column max, and the warning "Above the column maximum of X ml/min." appears. No check when the column has no max flow or the injection valve is on Waste (the column is bypassed).
     - Changing the column doesn't clamp the flow of phases on Waste.
-    - Warnings (export allowed): flow above column max; values the export rounds (%B to whole numbers, flow and fraction size to 0.1); a gradient over less than 10 ml ("Steep gradient … the 4 ml mixer smooths gradients shorter than 10 ml"). Errors (export blocked): length ≤ 0, %B outside 0–100, flow ≤ 0, negative fraction size, inlet outside A1–A8, phase shorter than 0.1 ml (0.2 ml when it starts with a %B step).
+    - Warnings (export allowed): flow above column max; values the export rounds (%B to whole numbers, flow and fraction size to 0.1); a gradient over less than 10 ml ("Steep gradient … the 4 ml mixer smooths gradients shorter than 10 ml"); Inject on an inlet other than A1 ("Inject pushes the sample loop with inlet An; loop injections normally run on A1."); a sample application on Load of 50 ml or less ("Loading over the system pump makes sense above 50 ml; inject smaller samples over a sample loop."). Errors (export blocked): length ≤ 0, %B outside 0–100, flow ≤ 0, negative fraction size, inlet outside A1–A8, phase shorter than 0.1 ml (0.2 ml when it starts with a %B step).
     - Fraction size (ml), where 0 means no fractions
-    - Inlet A (A1–A8, A8 labelled "(sample)")
+    - Inlet A (A1–A8)
     - Injection valve: Load (pump → column), Inject (pump → loop → column), Waste (pump → waste, column bypassed). Default by phase type: Sample application → Inject, Pump wash → Waste, all others → Load.
     - Autozero at start (On/Off toggle)
     - **Pump wash** phases show other fields after Name and Phase type: "Lines to wash · runs B, A8 … A1" (full width, one checkbox per line B, A1–A8, default B and A1; no line checked is an error "Select at least one line to wash."), "Volume per line (ml)" (default 40), Flow (ml/min, default 10) and the injection valve shown as Waste (not editable). Changing the type to Pump wash sets these defaults, fraction size 0 and Autozero off; %B is left as it is. The phase list meta reads "3 × 40 ml · B, A8, A1".
@@ -101,7 +102,7 @@ A row with space-between, align end. Left: title 20 px / 600, below it a descrip
 - **Program totals** card below the phases list and form, full width, padding 14 18 16. Title "Program totals" (11 px uppercase label). Grid `1fr 1fr 1.4fr`, gap 16 28, 13 px, labels muted, values right-aligned, tabular numbers. Recomputed on every change (drag, keyboard, form).
   - Run: Total volume, Run time (h/min), Phases, Breakpoints.
   - Fractions: Fractions (count; each fractionating phase counted separately, a partial last fraction counts), Collected (ml in fractionating phases), Fraction size (distinct sizes, e.g. "1, 2 ml"); "–" without fractions.
-  - Buffer use: one row per line the program pumps, in the order Inlet A1 … A8 ("Inlet A8 (sample)"), then Buffer B, and a bold "All lines" sum under a divider. A segment running from b0 to b1 %B takes its mean %B share from B and the rest from its inlet; pump wash lines count as well. Muted note: "Pumped by the program, rounded. Add volume for priming, tubing and the bottle dead volume."
+  - Buffer use: one row per line the program pumps, in the order Inlet A1 … A8, then Buffer B, and a bold "All lines" sum under a divider. A segment running from b0 to b1 %B takes its mean %B share from B and the rest from its inlet; pump wash lines count as well. Muted note: "Pumped by the program, rounded. Add volume for priming, tubing and the bottle dead volume."
 - Toggle buttons: active = ink fill with white text, inactive = white with ink text.
 
 ### Step 4 — Export for PrimeView
@@ -171,15 +172,16 @@ Migrations: version 1 has no `injection` (each phase gets its type's default); v
 - Only `Method base ml`. Find the header row starting with `Brkp`, map columns by name, read rows that start with a comma. The first volume must be 0.0 and volumes must strictly increase.
 - Each consecutive pair of breakpoints becomes one phase (length in ml, %B from the pair, settings from the first). A 0.1 ml segment that only changes %B (same settings incl. injection valve as the phase before, no autozero) is a %B step and is folded into the following phase.
 - A `PrimeMeth_NNN.txt` file name sets the method number.
-- `Inj` is read into the phase's injection valve. Phase type is guessed: Inj = Waste at constant 0 or 100 %B → pump wash with one line (100 %B → B, 0 %B → A{inlet}), so a pump wash comes back as one phase per line; inlet 8 or Inj = Inject → sample; %B changes → elution; %B ≥ 99 → strip; first phase → equil; otherwise wash. Phase names are not in the file, so the type name is used.
+- `Inj` is read into the phase's injection valve. Phase type is guessed: Inj = Waste at constant 0 or 100 %B → pump wash with one line (100 %B → B, 0 %B → A{inlet}), so a pump wash comes back as one phase per line; Inj = Inject → sample; %B changes → elution; %B ≥ 99 → strip; first phase → equil; otherwise wash. Phase names are not in the file, so the type name is used.
 - Without a method block: the program replaces the current one; application and column stay, the method name becomes the file name. Peak settings and event marks are dropped with a visible message.
 
 ## Application templates
-Lengths depend on the column. `rec` below is the method's standard flow (default the column's recommended flow); phases at `rec` start as Default flow, and slow sample loads are derived from it. Code: `src/domain/templates.ts`. Gradient elutions run 20 CV, or 30 CV on columns below 3 ml (on a 1 ml column a 20 CV gradient is hardly achievable through the mixer). Every phase uses `rec` unless stated; the injection valve is the phase type's default (sample phases Inject); elution fractions are 2 ml (1 ml for columns below 5 ml); `grad` is true when start %B ≠ end %B. After loading, the first elution phase is selected (otherwise the first phase). Default method name: `{short}_{column name without non-alphanumerics}`, e.g. `IMAC_HisTrapHP5ml`.
+Lengths depend on the column. `rec` below is the method's standard flow (default the column's recommended flow); phases at `rec` start as Default flow, and slow sample loads are derived from it. Code: `src/domain/templates.ts`. Gradient elutions run 20 CV, or 30 CV on columns below 3 ml (on a 1 ml column a 20 CV gradient is hardly achievable through the mixer). Every phase uses `rec` unless stated; the injection valve is the phase type's default (sample phases Inject) unless stated; elution fractions are 2 ml (1 ml for columns below 5 ml); `grad` is true when start %B ≠ end %B. Each template has one autozero, at the end of its first phase (the second phase's Autozero is on), when the baseline is stable. After loading, the first elution phase is selected (otherwise the first phase). Default method name: `{short}_{column name without non-alphanumerics}`, e.g. `IMAC_HisTrapHP5ml`.
 
 Application cards (name · short · description):
 - General · General · Any column. Equilibration, sample load, wash, linear gradient elution and re-equilibration as a starting point.
 - Elute pre-loaded column · Elute · Any column, loaded off the system. Wash, linear gradient elution, strip and re-equilibration. No sample phase.
+- Load & elute over system pump · PumpLoad · Any column, sample above 50 ml pumped through inlet A8. Equilibration, sample load, wash, linear gradient elution and re-equilibration.
 - Affinity · IMAC · IMAC · His-tagged proteins on Ni columns. Imidazole step wash and linear gradient elution.
 - Affinity · tags and ligands · Affinity · GST, Strep, MBP, Protein A/G and heparin. Step elution with the elution buffer.
 - Ion exchange · IEX · Anion or cation exchange. Salt gradient elution, high-salt strip, re-equilibration.
@@ -187,14 +189,15 @@ Application cards (name · short · description):
 - Size exclusion · SEC · Isocratic run on a gel filtration or desalting column with fraction collection over 1.2 CV.
 - Column equilibration · Equilibrate · Water rinse followed by buffer equilibration. No sample, no fractions.
 
-- **Elute pre-loaded column** (all columns; the column was loaded off the system, no sample phase): Wash 5 CV 0 %B (AZ) → Elution 20 CV (30 CV below 3 ml) 0→100 %B, fractions, AZ → Strip 5 CV 100 %B → Re-equilibration 5 CV 0 %B.
-- **General** (all columns): Equilibration 5 CV 0 %B (AZ) → Sample load 10 ml, A8, flow max(0.5, rec/5) → Wash 5 CV 0 %B → Elution 20 CV (30 CV below 3 ml) 0→100 %B, fractions, AZ → Re-equilibration 5 CV 0 %B.
-- **IMAC**: Equilibration 5 CV 0 %B (AZ on) → Sample load 25 ml, A8, flow 1 (5 ml column) or 0.5 → Wash 10 CV 5 %B → Elution 20 CV (30 CV below 3 ml) 5→100 %B, fractions 2 ml (1 ml for small columns), AZ on → Strip 5 CV 100 % → Re-equilibration 5 CV 0 %.
-- **IEX**: Equilibration 5 CV (AZ) → Sample load 20 ml, A8, flow max(0.5, rec/5) → Wash 5 CV → Elution 20 CV (30 CV below 3 ml) 0→50 %B, fractions → High-salt strip 5 CV 100 % → Re-equilibration 5 CV.
-- **Affinity** (proposal, step elution; B = elution buffer with glutathione / biotin / maltose / low pH): Equilibration 5 CV 0 %B (AZ) → Sample load 20 ml, A8, flow max(0.5, rec/5) → Wash 10 CV 0 %B → Elution 10 CV 100 %B isocratic, fractions 2 ml (1 ml for columns below 5 ml), AZ → Re-equilibration 5 CV 0 %B.
-- **HIC** (proposal; A = high-salt binding buffer, B = no salt): Equilibration 5 CV 0 %B (AZ) → Sample load 20 ml, A8, flow max(0.5, rec/5) → Wash 5 CV 0 %B → Elution 20 CV (30 CV below 3 ml) 0→100 %B, fractions → Strip 5 CV 100 %B → Re-equilibration 5 CV 0 %B.
-- **SEC** (includes desalting columns): Equilibration 1 CV (AZ) → Sample injection 2 ml, inlet A1, flow rec → Isocratic elution 1.2 CV, fractions 2 ml, AZ.
-- **Column equilibration**: Water rinse 3 CV, inlet A2 (AZ) → Equilibration 5 CV (AZ).
+- **Elute pre-loaded column** (all columns; the column was loaded off the system, no sample phase): Wash 5 CV 0 %B → Elution 20 CV (30 CV below 3 ml) 0→100 %B, fractions (AZ) → Strip 5 CV 100 %B → Re-equilibration 5 CV 0 %B.
+- **Load & elute over system pump** (all columns; the system pump draws the sample through inlet A8, so the A8 line must be primed with sample): Equilibration 5 CV 0 %B → Sample load 100 ml (AZ), A8, Load, flow max(0.5, rec/5) → Wash 10 CV 0 %B (A1, also rinses the sample out of the pump and tubing) → Elution 20 CV (30 CV below 3 ml) 0→100 %B, fractions → Re-equilibration 5 CV 0 %B.
+- **General** (all columns): Equilibration 5 CV 0 %B → Sample load 10 ml (AZ), A1, Inject, flow max(0.5, rec/5) → Wash 5 CV 0 %B → Elution 20 CV (30 CV below 3 ml) 0→100 %B, fractions → Re-equilibration 5 CV 0 %B.
+- **IMAC**: Equilibration 5 CV 0 %B → Sample load 25 ml (AZ), A1, Inject, flow 1 (5 ml column) or 0.5 → Wash 10 CV 5 %B → Elution 20 CV (30 CV below 3 ml) 5→100 %B, fractions 2 ml (1 ml for small columns) → Strip 5 CV 100 % → Re-equilibration 5 CV 0 %.
+- **IEX**: Equilibration 5 CV → Sample load 20 ml (AZ), A1, Inject, flow max(0.5, rec/5) → Wash 5 CV → Elution 20 CV (30 CV below 3 ml) 0→50 %B, fractions → High-salt strip 5 CV 100 % → Re-equilibration 5 CV.
+- **Affinity** (proposal, step elution; B = elution buffer with glutathione / biotin / maltose / low pH): Equilibration 5 CV 0 %B → Sample load 20 ml (AZ), A1, Inject, flow max(0.5, rec/5) → Wash 10 CV 0 %B → Elution 10 CV 100 %B isocratic, fractions 2 ml (1 ml for columns below 5 ml) → Re-equilibration 5 CV 0 %B.
+- **HIC** (proposal; A = high-salt binding buffer, B = no salt): Equilibration 5 CV 0 %B → Sample load 20 ml (AZ), A1, Inject, flow max(0.5, rec/5) → Wash 5 CV 0 %B → Elution 20 CV (30 CV below 3 ml) 0→100 %B, fractions → Strip 5 CV 100 %B → Re-equilibration 5 CV 0 %B.
+- **SEC** (includes desalting columns): Equilibration 1 CV → Sample injection 2 ml (AZ), inlet A1, flow rec → Isocratic elution 1.2 CV, fractions 2 ml.
+- **Column equilibration**: Water rinse 3 CV, inlet A2 → Equilibration 5 CV (AZ).
 
 ## Column library (seed)
 Source: `docs/data/columns-source.de.csv` (German, as provided). Code: `src/domain/columns.ts`, 101 columns.
