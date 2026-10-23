@@ -32,7 +32,7 @@ export function MethodsPopover({ state, dispatch, onClose }: { state: State; dis
       const slot = slotFromFileName(file.name)
       const message = [`Imported ${file.name}`, ...result.warnings].join(' ')
       if (result.kind === 'method') {
-        dispatch({ type: 'openMethod', method: result.method, message, slot })
+        dispatch({ type: 'openMethod', method: result.method, message, slot, sticky: result.warnings.length > 0 })
       } else {
         const status = { text: message, sticky: result.warnings.length > 0 }
         dispatch({ type: 'importPhases', phases: result.phases, name: file.name.replace(/\.[^.]+$/, ''), slot, status })

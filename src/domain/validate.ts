@@ -35,10 +35,6 @@ export function validatePhase(p: Phase, i: number, column: Column): Issue[] {
   }
   if (!(p.frac >= 0)) err('frac', 'Fraction size cannot be negative.')
   const warn = (field: IssueField, message: string) => issues.push({ phase: i, field, level: 'warning', message })
-  const decimals = (x: number, d: number) => Math.abs(x * 10 ** d - Math.round(x * 10 ** d)) > 1e-6
-  if (decimals(p.b0, 0) || (p.grad && decimals(p.b1, 0))) warn(p.grad && decimals(p.b1, 0) && !decimals(p.b0, 0) ? 'b1' : 'b0', 'The ÄKTA prime takes whole %B values; the export rounds them.')
-  if (p.flow > 0 && decimals(p.flow, 1)) warn('flow', 'The ÄKTA prime takes flow in 0.1 ml/min steps; the export rounds it.')
-  if (p.frac > 0 && decimals(p.frac, 1)) warn('frac', 'The ÄKTA prime takes fraction sizes in 0.1 ml steps; the export rounds them.')
   const ml = phaseMl(p, column)
   if (p.grad && p.b0 !== p.b1 && ml > 0 && ml < STEEP_GRADIENT_ML) {
     warn('len', `Steep gradient over ${fmt(ml)} ml: the ${MIXER_VOLUME} ml mixer smooths gradients shorter than ${STEEP_GRADIENT_ML} ml, so the real gradient will be shallower.`)
@@ -58,9 +54,6 @@ function validatePumpWash(p: Phase, i: number): Issue[] {
   const issues: Issue[] = []
   if (!p.lines?.length) issues.push({ phase: i, field: 'lines', level: 'error', message: 'Select at least one line to wash.' })
   if (!(p.flow > 0)) issues.push({ phase: i, field: 'flow', level: 'error', message: 'Flow must be greater than 0.' })
-  else if (Math.abs(p.flow * 10 - Math.round(p.flow * 10)) > 1e-6) {
-    issues.push({ phase: i, field: 'flow', level: 'warning', message: 'The ÄKTA prime takes flow in 0.1 ml/min steps; the export rounds it.' })
-  }
   return issues
 }
 

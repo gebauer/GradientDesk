@@ -1,3 +1,4 @@
+import { stdFlowOf } from './calc'
 import type { ApplicationId, Column, Inlet, InjectValve, LengthUnit, Phase, PhaseType, PumpLine } from './types'
 
 export interface Application {
@@ -75,7 +76,7 @@ const elutionFrac = (c: Column) => (c.cv >= 5 ? 2 : 1)
 export const gradientCV = (c: Column) => (c.cv < 3 ? 30 : 20)
 
 /** Slow sample load used by IEX, HIC and affinity. */
-const slowLoad = (c: Column) => Math.max(0.5, c.rec / 5)
+const slowLoad = (c: Column) => Math.max(0.5, Math.round(c.rec * 2) / 10)
 
 /** Sample volumes up to this (ml) belong in a loop, not through the system pump. */
 export const PUMP_LOAD_MIN_ML = 50
@@ -148,7 +149,7 @@ const TEMPLATES: Record<ApplicationId, (c: Column) => Phase[]> = {
  * Template program built around the standard flow (default: the column's recommended flow).
  * Phases at the standard flow are marked `flowStd`; slower sample loads are derived from it.
  */
-export function templateFor(app: ApplicationId, column: Column, stdFlow: number = column.rec): Phase[] {
+export function templateFor(app: ApplicationId, column: Column, stdFlow: number = stdFlowOf({ stdFlow: null, column })): Phase[] {
   return TEMPLATES[app]({ ...column, rec: stdFlow }).map((p) => (p.flow === stdFlow ? { ...p, flowStd: true } : p))
 }
 

@@ -1,0 +1,54 @@
+
+*****************************************************************
+** Method Dump
+** AKTAprime   Ver  , V2.02               
+** Dump Format Ver  , V1.00               
+** Created with     , GradientDesk v0.1.0 (gradientdesk.xcience.net)
+** Source           , github.com/gebauer/GradientDesk
+** Created by       , Jan Gebauer
+** GradientDesk method
+** [method] format=gradientdesk; version=3; name=IMAC_HisTrapHP5ml; application=imac
+**   standardFlow=none; pressureLimit=none
+** [column] id=histrap-hp-5-ml; name=HisTrap HP 5 ml; manufacturer=Cytiva; cv=5; flow=20; rec=5
+**   p=0.5; apps=imac
+** [phase 1] name=Equilibration; type=equil; length=5; unit=CV; startB=0; endB=0; gradient=no
+**   flow=5; flowDefault=yes; fraction=0; inletA=1; injection=Load; autozero=no
+** [phase 2] name=Sample load; type=sample; length=25; unit=ml; startB=0; endB=0; gradient=no
+**   flow=1; flowDefault=no; fraction=0; inletA=1; injection=Inject; autozero=yes
+** [phase 3] name=Wash; type=wash; length=10; unit=CV; startB=5; endB=5; gradient=no; flow=5
+**   flowDefault=yes; fraction=0; inletA=1; injection=Load; autozero=no
+** [phase 4] name=Elution; type=elution; length=20; unit=CV; startB=5; endB=100; gradient=yes
+**   flow=5; flowDefault=yes; fraction=2; inletA=1; injection=Load; autozero=no
+** [phase 5] name=Strip; type=strip; length=5; unit=CV; startB=100; endB=100; gradient=no
+**   flow=5; flowDefault=yes; fraction=0; inletA=1; injection=Load; autozero=no
+** [phase 6] name=Re-equilibration; type=equil; length=5; unit=CV; startB=0; endB=0; gradient=no
+**   flow=5; flowDefault=yes; fraction=0; inletA=1; injection=Load; autozero=no
+*****************************************************************
+
+
+******************
+** Method Settings
+******************
+Method Type        ,-
+Method             ,-
+Method base        ,ml
+Frac base          ,ml
+Max pressure (kPa) ,500
+Alarm (min/ml)     ,0.0
+
+*********************
+** Method Breakpoints
+*********************
+                     
+Brkp Volume   Conc Flow  Frac   Buff Inj    Peak   Autozero Eventmark
+                                          (mAu/min)
+
+,1   ,0.0     ,0   ,5.0  ,0.0   ,1   ,Load  ,0     ,N       ,N
+,2   ,25.0    ,0   ,1.0  ,0.0   ,1   ,Inject,0     ,Y       ,N
+,3   ,50.0    ,0   ,1.0  ,0.0   ,1   ,Inject,0     ,N       ,N
+,4   ,50.1    ,5   ,5.0  ,0.0   ,1   ,Load  ,0     ,N       ,N
+,5   ,100.0   ,5   ,5.0  ,2.0   ,1   ,Load  ,0     ,N       ,N
+,6   ,200.0   ,100 ,5.0  ,0.0   ,1   ,Load  ,0     ,N       ,N
+,7   ,225.0   ,100 ,5.0  ,0.0   ,1   ,Load  ,0     ,N       ,N
+,8   ,225.1   ,0   ,5.0  ,0.0   ,1   ,Load  ,0     ,N       ,N
+,9   ,250.0   ,0   ,5.0  ,0.0   ,1   ,Load  ,0     ,N       ,N

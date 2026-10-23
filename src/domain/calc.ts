@@ -79,6 +79,27 @@ export function calcProgram(phases: readonly Phase[], column: Column): ProgramCa
 }
 
 const round1 = (x: number) => Math.round(x * 10) / 10
+const round2 = (x: number) => Math.round(x * 100) / 100
+
+/**
+ * A phase as the ÄKTA prime can run it: whole %B, flow and fraction size in 0.1 steps, ml lengths
+ * in 0.1 ml. CV lengths keep 0.01 CV (the export rounds the volumes to 0.1 ml).
+ */
+export function snapPhase(p: Phase): Phase {
+  return {
+    ...p,
+    b0: Math.round(p.b0),
+    b1: Math.round(p.b1),
+    flow: round1(p.flow),
+    frac: round1(p.frac),
+    len: p.unit === 'CV' ? round2(p.len) : round1(p.len),
+  }
+}
+
+/** Flow in the system's 0.1 ml/min steps. */
+export const snapFlow = round1
+/** Pressure limit in MPa as the file holds it: whole kPa. */
+export const snapPressure = (mpa: number) => Math.round(mpa * 1000) / 1000
 
 /** Volume offset of the start breakpoint after a %B step (two breakpoints at one volume don't work). */
 export const STEP_OFFSET = 0.1
@@ -114,8 +135,8 @@ export function maxB(phases: readonly Phase[]): number {
   return expandPhases(phases).reduce((m, { p }) => Math.max(m, p.b0, endB(p)), 0)
 }
 
-/** The method's standard flow and pressure limit: its override, otherwise the column's value. */
-export const stdFlowOf = (m: { stdFlow: number | null; column: Column }): number => m.stdFlow ?? m.column.rec
+/** The method's standard flow and pressure limit: its override, otherwise the column's value (flow in 0.1 steps). */
+export const stdFlowOf = (m: { stdFlow: number | null; column: Column }): number => m.stdFlow ?? Math.max(0.1, snapFlow(m.column.rec))
 export const pressureOf = (m: { pressure: number | null; column: Column }): number => m.pressure ?? m.column.p
 
 /** Sets every phase that runs at the standard flow to `flow`. */

@@ -1,16 +1,21 @@
-import { fromMethodFile, toMethodFile } from './methodJson'
-import { fromPrimeViewTxt, MAX_LINE, toPrimeViewTxt, type ExportInfo } from './primeview'
-import { pressureOf } from './calc'
-import type { Method, Phase } from './types'
+import { pressureOf, sortLines, stdFlowOf } from './calc'
+import { fromMethodFile, MethodImportError, readLines, readMethodHead } from './methodJson'
+import { fromPrimeViewTxt, MAX_LINE, maxPressureKpa, toPrimeViewTxt, type ExportInfo } from './primeview'
+import { PHASE_TYPES } from './templates'
+import type { Method, Phase, PhaseType } from './types'
 
 /**
- * The .txt file GradientDesk writes: the PrimeView method dump with the whole method (name,
- * application, column, phases) in its comment header, so a re-import restores it completely.
+ * The .txt file GradientDesk writes: the PrimeView method dump with a method block in its comment
+ * header. The breakpoint table is the source of truth; the block adds only what the table can't
+ * hold (method name, application, column, phase names, types, units, CV lengths, Default flow,
+ * pump wash lines) and a checksum of the table, so a re-import notices a table edited elsewhere.
  * PrimeView allows comments only before the breakpoint table and no line over 100 characters,
  * so the block is compact and wraps at MAX_LINE. Spec: docs/primeview-format.md §11.
  */
 
 const MARKER = '** GradientDesk method'
+/** Block format: version 4 holds what the table can't; versions 1–3 held the whole method file. */
+const BLOCK_VERSION = 4
 const BOOL_KEYS = new Set(['gradient', 'autozero', 'custom', 'recEstimated', 'flowDefault'])
 const LIST_KEYS = new Set(['apps', 'lines'])
 /** Prefix of a wrapped line. */
@@ -79,13 +84,38 @@ function section(name: string, entries: Record<string, Value>): string[] {
   return [...out, line]
 }
 
-/** The method block for the header, every line at most MAX_LINE characters. */
-export function methodBlock(m: Method): string[] {
-  const f = toMethodFile(m)
-  const c = f.column
+const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
+  let c = n
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+  return c >>> 0
+})
+
+/** CRC-32 (IEEE) of an ASCII string as 8 hex digits. */
+export function crc32(s: string): string {
+  let c = 0xffffffff
+  for (let i = 0; i < s.length; i++) c = CRC_TABLE[(c ^ s.charCodeAt(i)) & 0xff] ^ (c >>> 8)
+  return ((c ^ 0xffffffff) >>> 0).toString(16).padStart(8, '0')
+}
+
+const tableRows = (text: string) =>
+  text
+    .split(/\r?\n/)
+    .filter((l) => l.trimStart().startsWith(','))
+    .map((l) => l.replace(/\s+/g, ''))
+
+const pressureLine = (text: string) => text.split(/\r?\n/).find((l) => /^Max pressure\b/.test(l))
+
+/** Checksum of what the method block relies on: the Max pressure line and the breakpoint rows, without spaces. */
+export function tableChecksum(text: string): string {
+  return crc32([(pressureLine(text) ?? '').replace(/\s+/g, ''), ...tableRows(text)].join('\n'))
+}
+
+/** The method block for the header, every line at most MAX_LINE characters. `table`: the table's checksum. */
+export function methodBlock(m: Method, table: string): string[] {
+  const c = m.column
   return [
     MARKER,
-    ...section('method', { format: f.format, version: f.version, name: f.name, application: f.application, standardFlow: f.standardFlow, pressureLimit: f.pressureLimit }),
+    ...section('method', { format: 'gradientdesk', version: BLOCK_VERSION, name: m.name, application: m.application, standardFlow: m.stdFlow, pressureLimit: m.pressure, table }),
     ...section('column', {
       id: c.id,
       name: c.name,
@@ -99,14 +129,26 @@ export function methodBlock(m: Method): string[] {
       note: c.note,
       custom: c.custom ? true : undefined,
     }),
-    ...f.phases.flatMap((p, i) => section(`phase ${i + 1}`, p)),
+    ...m.phases.flatMap((p, i) =>
+      section(`phase ${i + 1}`, {
+        name: p.name,
+        type: p.type,
+        unit: p.unit,
+        // The table has the length in ml, rounded to 0.1; a CV length keeps the planned value.
+        length: p.unit === 'CV' ? p.len : undefined,
+        flowDefault: p.flowStd,
+        lines: p.type === 'pumpwash' ? sortLines(p.lines ?? []) : undefined,
+      }),
+    ),
   ]
 }
 
 /** PrimeView dump with the method block in the header. */
 export function toMethodTxt(m: Method, info?: ExportInfo): string {
   // Max pressure in the file is the method's pressure limit.
-  return toPrimeViewTxt(m.phases, { ...m.column, p: pressureOf(m) }, info, methodBlock(m))
+  const column = { ...m.column, p: pressureOf(m) }
+  const table = tableChecksum(toPrimeViewTxt(m.phases, column))
+  return toPrimeViewTxt(m.phases, column, info, methodBlock(m, table))
 }
 
 function convert(section: string, key: string, raw: string): unknown {
@@ -163,36 +205,88 @@ export function readMethodBlock(text: string): Record<string, unknown> | null {
 }
 
 export type TxtImport =
-  /** The method block was read and matches the breakpoint table. */
+  /**
+   * The block was read: the full method when the table is unchanged, otherwise the table's phases
+   * with name, application and column from the block (and a warning).
+   */
   | { kind: 'method'; method: Method; warnings: string[] }
-  /** Only the breakpoint table: no block, an unreadable one, or one the table no longer matches. */
+  /** Only the breakpoint table: no block, or one that can't be read. */
   | { kind: 'phases'; phases: Phase[]; warnings: string[] }
 
-const tableRows = (text: string) =>
-  text
-    .split(/\r?\n/)
-    .filter((l) => l.trimStart().startsWith(','))
-    .map((l) => l.replace(/\s+/g, ''))
+const CHANGED =
+  'The breakpoint table was changed outside GradientDesk: the phases were read from the table, name, application and column from the GradientDesk block.'
 
-/** Imports a .txt: the full method from the block when it matches the table, otherwise the table. Throws MethodImportError. */
+const num = (x: unknown): number => (typeof x === 'string' ? parseFloat(x) : NaN)
+
+/**
+ * Lays the block's phase data over the phases read from the table, in order; a pump wash takes one
+ * table phase per line. Null when they don't line up.
+ */
+function overlay(head: Omit<Method, 'phases'>, metas: readonly Record<string, unknown>[], rows: readonly Phase[]): Phase[] | null {
+  const out: Phase[] = []
+  let k = 0
+  for (const meta of metas) {
+    const type: PhaseType = PHASE_TYPES.some((t) => t.id === meta.type) ? (meta.type as PhaseType) : 'wash'
+    const lines = type === 'pumpwash' ? readLines(meta.lines) : undefined
+    const n = lines ? lines.length : 1
+    const segs = rows.slice(k, k + n)
+    if (n === 0 || segs.length < n) return null
+    k += n
+    // The table import guesses a pump wash line from Waste at 0 / 100 %B; the block's type decides.
+    const { lines: _guessed, ...first } = segs[0]
+    const unit = meta.unit === 'CV' ? 'CV' : 'ml'
+    const cv = num(meta.length)
+    const flowStd = meta.flowDefault === true
+    const phase: Phase = {
+      ...first,
+      name: typeof meta.name === 'string' && meta.name.trim() ? meta.name : first.name,
+      type,
+      len: unit === 'CV' ? (cv > 0 ? cv : first.len / head.column.cv) : first.len,
+      unit,
+      flow: flowStd ? stdFlowOf(head) : first.flow,
+      flowStd,
+    }
+    // A pump wash runs its lines at 100 / 0 %B; line B carries the phase's inlet.
+    out.push(lines ? { ...phase, b1: first.b0, grad: false, inlet: lines[0] === 'B' ? first.inlet : 1, lines } : phase)
+  }
+  return k === rows.length ? out : null
+}
+
+/** The table's Max pressure as a pressure limit: null when it is the column's value or missing. */
+function tablePressure(text: string, head: Omit<Method, 'phases'>): number | null {
+  const kpa = parseFloat(pressureLine(text)?.split(',')[1] ?? '')
+  if (!Number.isFinite(kpa)) return head.pressure
+  return kpa === maxPressureKpa(head.column) ? null : kpa / 1000
+}
+
+/**
+ * Imports a .txt. With a GradientDesk block and an unchanged table, the full method; with a changed
+ * table, the table's phases and the block's name, application and column. Throws MethodImportError.
+ */
 export function fromMethodTxt(text: string): TxtImport {
   const table = fromPrimeViewTxt(text)
   const block = readMethodBlock(text)
   if (!block) return { kind: 'phases', ...table }
-  let method: Method
+  let head: Omit<Method, 'phases'>
+  let method: Method | null
   try {
-    method = fromMethodFile(block)
+    head = readMethodHead(block, BLOCK_VERSION)
+    const metas = block.phases as Record<string, unknown>[]
+    if (num(block.version) < BLOCK_VERSION) method = fromMethodFile(block)
+    else {
+      if (metas.length === 0) throw new MethodImportError('The block has no phases.')
+      const phases = block.table === tableChecksum(text) ? overlay(head, metas, table.phases) : null
+      method = phases && { ...head, phases }
+    }
   } catch {
     return { kind: 'phases', phases: table.phases, warnings: ['The GradientDesk block could not be read; the breakpoint table was imported.', ...table.warnings] }
   }
-  const expected = tableRows(toPrimeViewTxt(method.phases, method.column))
+  // The block must give back exactly the file's breakpoints (older blocks have no checksum).
+  const expected = method && tableRows(toPrimeViewTxt(method.phases, { ...method.column, p: pressureOf(method) }))
   const actual = tableRows(text)
-  if (expected.length !== actual.length || expected.some((r, i) => r !== actual[i])) {
-    return {
-      kind: 'phases',
-      phases: table.phases,
-      warnings: ['The breakpoint table was changed outside GradientDesk; it was imported without the GradientDesk block.', ...table.warnings],
-    }
+  if (method && expected && expected.length === actual.length && expected.every((r, i) => r === actual[i])) {
+    return { kind: 'method', method, warnings: [] }
   }
-  return { kind: 'method', method, warnings: [] }
+  const fallback: Method = { ...head, pressure: tablePressure(text, head), phases: table.phases }
+  return { kind: 'method', method: fallback, warnings: [CHANGED, ...table.warnings] }
 }

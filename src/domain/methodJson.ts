@@ -136,7 +136,7 @@ function readPhase(x: unknown, i: number, recFlow: number): Phase {
   }
 }
 
-function readLines(x: unknown): PumpLine[] {
+export function readLines(x: unknown): PumpLine[] {
   if (!Array.isArray(x)) return [...PUMP_WASH_LINES]
   return sortLines(x.filter((l): l is PumpLine => PUMP_LINES.includes(l as PumpLine)))
 }
@@ -152,29 +152,36 @@ export function fromJson(text: string): Method {
   return fromMethodFile(data)
 }
 
-/** Reads a parsed method file (from JSON or the .txt method block), migrating older versions. */
-export function fromMethodFile(data: unknown): Method {
+/**
+ * Everything of a method file but the phases: name, application, column, standard flow and pressure
+ * limit. `maxVersion`: the newest format version the caller reads (the .txt method block has its own).
+ */
+export function readMethodHead(data: unknown, maxVersion: number = CURRENT_VERSION): Omit<Method, 'phases'> {
   if (!isObj(data) || data.format !== 'gradientdesk') throw new MethodImportError('This is not a GradientDesk method file.')
   const version = num(data.version)
-  if (version > CURRENT_VERSION) throw new MethodImportError(`The file was made by a newer version of GradientDesk (format version ${version}).`)
+  if (version > maxVersion) throw new MethodImportError(`The file was made by a newer version of GradientDesk (format version ${version}).`)
   // Older versions: missing fields get their defaults in readPhase and below (see MethodFile).
-  if (![1, 2, 3].includes(version)) throw new MethodImportError(`Unknown format version ${String(data.version)}.`)
-  if (!Array.isArray(data.phases) || data.phases.length === 0) throw new MethodImportError('The file has no phases.')
-  const column = readColumn(data.column)
+  if (!(Number.isInteger(version) && version >= 1)) throw new MethodImportError(`Unknown format version ${String(data.version)}.`)
   const positive = (x: unknown) => (x === null || x === undefined || x === 'none' ? null : num(x) > 0 ? num(x) : null)
-
   return {
     format: 'gradientdesk',
     version: 3,
     name: str(data.name, 'Imported method'),
     application: APP_IDS.includes(data.application as ApplicationId) ? (data.application as ApplicationId) : 'general',
     system: 'AKTAprime',
-    column,
+    column: readColumn(data.column),
     stdFlow: positive(data.standardFlow),
     pressure: positive(data.pressureLimit),
-    phases: data.phases.map((p, i) => readPhase(p, i, column.rec)),
     modified: str(data.modified, new Date(0).toISOString()),
   }
+}
+
+/** Reads a parsed method file (from JSON or a version 1–3 .txt method block), migrating older versions. */
+export function fromMethodFile(data: unknown): Method {
+  const head = readMethodHead(data)
+  const phases = (data as Obj).phases
+  if (!Array.isArray(phases) || phases.length === 0) throw new MethodImportError('The file has no phases.')
+  return { ...head, phases: phases.map((p, i) => readPhase(p, i, head.column.rec)) }
 }
 
 /**

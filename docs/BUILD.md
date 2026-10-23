@@ -17,7 +17,7 @@ src/
     templates.ts      application templates (imac, iex, sec, equil)
     calc.ts           phaseVolumes(), totals(), breakpoints()
     primeview.ts      toPrimeViewTxt(), fromPrimeViewTxt()
-    methodTxt.ts      toMethodTxt(), fromMethodTxt(): dump + method block, full re-import
+    methodTxt.ts      toMethodTxt(), fromMethodTxt(): dump + method block (table checksum), re-import
     methodJson.ts     method data (localStorage JSON) + version migration
     validate.ts       per-phase warnings and errors
   storage/
@@ -61,7 +61,7 @@ tests/
 - Dragging a handle updates the length/%B in the form and the breakpoint table live, and the axis does not jump during the drag.
 - Flow above the column max shows the red border and warning text.
 - Save → reload → Methods → Open restores the identical method.
-- Export .txt → Import gives an identical method (from the method block) and Export .txt again gives a byte-identical file.
+- Export .txt → Import gives the same method (table values plus the method block; values finer than the table rounded) and Export .txt again gives a byte-identical file.
 - Custom columns survive reload and can be deleted.
 - `npm test` and `npm run lint` are clean. `npm run build` produces a working static site.
 
@@ -80,6 +80,8 @@ The deploy files live in the repo root: `Dockerfile`, `nginx.conf`, `security-he
 - nginx drops server-level `add_header` lines in any `location` that sets its own, so every location includes `security-headers.conf`.
 - nginx listens on IPv4 and IPv6, and the healthcheck uses `127.0.0.1` (busybox `wget localhost` goes to `::1`).
 Note: data lives in each user's browser (`localStorage`), so redeploys never touch user data. Keep the domain stable — a new origin means empty storage.
+
+Domains: `gradientdesk.xcience.net` is the app; `gradidesk.xcience.net` is a short alias that nginx redirects (301) to it, so all saved methods stay under one origin. Both names must be listed in the Coolify resource's domains (so the proxy routes them and issues certificates) and point to the server in DNS.
 
 ## Open points
 - Resolved: PrimeView method dump format, from a real sample (`tests/golden/sample-imac-gradient.txt`).

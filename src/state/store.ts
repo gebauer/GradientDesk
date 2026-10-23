@@ -1,5 +1,5 @@
 import { useEffect, useReducer } from 'react'
-import { applyStdFlow, clampFlows, convertLength, stdFlowOf, updatePhaseLinked } from '../domain/calc'
+import { applyStdFlow, clampFlows, convertLength, snapFlow, snapPhase, snapPressure, stdFlowOf, updatePhaseLinked } from '../domain/calc'
 import { columnsFor, customRecFlow, SEED_COLUMNS, touchRecent } from '../domain/columns'
 import { resolveColumn } from '../domain/methodJson'
 import { MAX_SLOT } from '../domain/primeview'
@@ -62,7 +62,7 @@ export type Action =
   | { type: 'dragEnd' }
   | { type: 'save'; now: string }
   | { type: 'deleteMethod'; index: number }
-  | { type: 'openMethod'; method: Method; message: string; slot?: number | null }
+  | { type: 'openMethod'; method: Method; message: string; slot?: number | null; sticky?: boolean }
   | { type: 'importPhases'; phases: Phase[]; name: string; slot: number | null; status: Status }
   | { type: 'toggleMethods' }
   | { type: 'closeMethods' }
@@ -110,15 +110,15 @@ export function reducer(s: State, a: Action): State {
       const recentColumns = touchRecent(s.recentColumns, col.id)
       if (col.id === s.colId) return { ...s, recentColumns }
       // A new column brings its own standard flow and pressure limit; overrides are reset.
-      const phases = clampFlows(applyStdFlow(s.phases, col.rec), col)
+      const phases = clampFlows(applyStdFlow(s.phases, stdFlowOf({ stdFlow: null, column: col })), col)
       return { ...s, colId: col.id, stdFlow: null, pressure: null, phases, recentColumns }
     }
     case 'setStdFlow': {
-      const stdFlow = a.value !== null && a.value > 0 ? a.value : null
-      return { ...s, stdFlow, phases: applyStdFlow(s.phases, stdFlow ?? currentColumn(s).rec) }
+      const stdFlow = a.value !== null && snapFlow(a.value) > 0 ? snapFlow(a.value) : null
+      return { ...s, stdFlow, phases: applyStdFlow(s.phases, stdFlowOf({ stdFlow, column: currentColumn(s) })) }
     }
     case 'setPressure': {
-      return { ...s, pressure: a.value !== null && a.value > 0 ? a.value : null }
+      return { ...s, pressure: a.value !== null && snapPressure(a.value) > 0 ? snapPressure(a.value) : null }
     }
     case 'addCustomColumn': {
       const col: Column = { id: a.id, name: a.name, manufacturer: '', cv: a.cv, flow: a.flow, rec: a.rec ?? customRecFlow(a.flow), p: a.p, apps: [], custom: true }
@@ -139,7 +139,8 @@ export function reducer(s: State, a: Action): State {
     case 'updatePhase': {
       // Setting a flow makes it the phase's own value unless the patch says otherwise.
       const patch = 'flow' in a.patch && !('flowStd' in a.patch) ? { ...a.patch, flowStd: false } : a.patch
-      return { ...s, phases: updatePhaseLinked(s.phases, a.index, patch) }
+      // Only values the system can run: whole %B, 0.1 steps for flow, fractions and ml.
+      return { ...s, phases: updatePhaseLinked(s.phases, a.index, patch).map(snapPhase) }
     }
     case 'setUnit': {
       const p = s.phases[a.index]
@@ -182,26 +183,28 @@ export function reducer(s: State, a: Action): State {
       const resolved = resolveColumn(a.method.column, allColumns(s))
       if (!resolved) return { ...s, status: { text: `Could not open “${a.method.name}”: the column has no column volume.`, sticky: true } }
       const customColumns = resolved.added ? [...s.customColumns, resolved.column] : s.customColumns
+      // Stored methods from before snapping may hold finer values than the system runs.
+      const stdFlow = a.method.stdFlow === null ? null : snapFlow(a.method.stdFlow)
       return {
         ...s,
         customColumns,
         recentColumns: touchRecent(s.recentColumns, resolved.column.id),
         app: a.method.application,
         colId: resolved.column.id,
-        stdFlow: a.method.stdFlow,
-        pressure: a.method.pressure,
+        stdFlow,
+        pressure: a.method.pressure === null ? null : snapPressure(a.method.pressure),
         // Default-flow phases follow the standard flow as it is now (the library column may have changed).
-        phases: applyStdFlow(a.method.phases, stdFlowOf({ stdFlow: a.method.stdFlow, column: resolved.column })),
+        phases: applyStdFlow(a.method.phases.map(snapPhase), stdFlowOf({ stdFlow, column: resolved.column })),
         sel: defaultSelection(a.method.phases),
         methodName: a.method.name,
         slot: a.slot ?? s.slot,
         step: 3,
         showMethods: false,
-        status: { text: a.message, sticky: false },
+        status: { text: a.message, sticky: a.sticky ?? false },
       }
     }
     case 'importPhases':
-      return { ...s, phases: a.phases, sel: 0, methodName: a.name, slot: a.slot ?? s.slot, step: 3, showMethods: false, status: a.status }
+      return { ...s, phases: a.phases.map(snapPhase), sel: 0, methodName: a.name, slot: a.slot ?? s.slot, step: 3, showMethods: false, status: a.status }
     case 'toggleMethods':
       return { ...s, showMethods: !s.showMethods }
     case 'closeMethods':

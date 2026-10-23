@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent } from 'react'
+import { stdFlowOf } from '../../domain/calc'
 import { COLUMN_TYPES, columnsOfType, customRecFlow, defaultColumnType, filterColumns, splitRecent, vendorCounts, type ColumnType } from '../../domain/columns'
 import type { Column } from '../../domain/types'
 import { APPLICATIONS } from '../../domain/templates'
@@ -262,7 +263,7 @@ function MethodSettings({ state, dispatch }: { state: State; dispatch: (a: Actio
           <DefaultNumber
             id="std-flow"
             value={state.stdFlow}
-            fallback={column.rec}
+            fallback={stdFlowOf({ stdFlow: null, column })}
             onChange={(value) => dispatch({ type: 'setStdFlow', value })}
             checkLabel="Column value"
             checkName="Standard flow: use the column's recommended flow"

@@ -64,6 +64,17 @@ describe('templates (ml per phase)', () => {
     }
   })
 
+  test('every template runs at the system precision on every listed column', () => {
+    for (const app of APPLICATIONS) {
+      for (const c of columnsFor(app.id, SEED_COLUMNS)) {
+        for (const p of templateFor(app.id, c)) {
+          expect(Math.round(p.flow * 10) / 10, `${app.id} / ${c.name}`).toBe(p.flow)
+          expect(Math.round(p.frac * 10) / 10, `${app.id} / ${c.name}`).toBe(p.frac)
+        }
+      }
+    }
+  })
+
   test('sample phases inject the loop with buffer from A1, except loading over the system pump', () => {
     for (const app of APPLICATIONS.filter((a) => a.id !== 'pumpload')) {
       for (const p of templateFor(app.id, col('HisTrap HP 5 ml')).filter((q) => q.type === 'sample')) {

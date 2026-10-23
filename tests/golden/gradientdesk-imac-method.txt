@@ -7,22 +7,16 @@
 ** Source           , github.com/gebauer/GradientDesk
 ** Created by       , Jan Gebauer
 ** GradientDesk method
-** [method] format=gradientdesk; version=3; name=IMAC_HisTrapHP5ml; application=imac
-**   standardFlow=none; pressureLimit=none
+** [method] format=gradientdesk; version=4; name=IMAC_HisTrapHP5ml; application=imac
+**   standardFlow=none; pressureLimit=none; table=1fd7f387
 ** [column] id=histrap-hp-5-ml; name=HisTrap HP 5 ml; manufacturer=Cytiva; cv=5; flow=20; rec=5
 **   p=0.5; apps=imac
-** [phase 1] name=Equilibration; type=equil; length=5; unit=CV; startB=0; endB=0; gradient=no
-**   flow=5; flowDefault=yes; fraction=0; inletA=1; injection=Load; autozero=no
-** [phase 2] name=Sample load; type=sample; length=25; unit=ml; startB=0; endB=0; gradient=no
-**   flow=1; flowDefault=no; fraction=0; inletA=1; injection=Inject; autozero=yes
-** [phase 3] name=Wash; type=wash; length=10; unit=CV; startB=5; endB=5; gradient=no; flow=5
-**   flowDefault=yes; fraction=0; inletA=1; injection=Load; autozero=no
-** [phase 4] name=Elution; type=elution; length=20; unit=CV; startB=5; endB=100; gradient=yes
-**   flow=5; flowDefault=yes; fraction=2; inletA=1; injection=Load; autozero=no
-** [phase 5] name=Strip; type=strip; length=5; unit=CV; startB=100; endB=100; gradient=no
-**   flow=5; flowDefault=yes; fraction=0; inletA=1; injection=Load; autozero=no
-** [phase 6] name=Re-equilibration; type=equil; length=5; unit=CV; startB=0; endB=0; gradient=no
-**   flow=5; flowDefault=yes; fraction=0; inletA=1; injection=Load; autozero=no
+** [phase 1] name=Equilibration; type=equil; unit=CV; length=5; flowDefault=yes
+** [phase 2] name=Sample load; type=sample; unit=ml; flowDefault=no
+** [phase 3] name=Wash; type=wash; unit=CV; length=10; flowDefault=yes
+** [phase 4] name=Elution; type=elution; unit=CV; length=20; flowDefault=yes
+** [phase 5] name=Strip; type=strip; unit=CV; length=5; flowDefault=yes
+** [phase 6] name=Re-equilibration; type=equil; unit=CV; length=5; flowDefault=yes
 *****************************************************************
 
 

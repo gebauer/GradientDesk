@@ -165,22 +165,26 @@ Readers don't depend on any of the layout details above, only on the line types 
 
 ## 11. GradientDesk method block
 
-GradientDesk writes the complete method into the comment header, so a re-import restores everything the breakpoint table can't hold (method name, application, column, phase names, types and units). Comments must come before the table and lines must stay within 100 characters (§1, §3), so the block is compact and wraps. Code: `src/domain/methodTxt.ts`; byte-exact reference: `tests/golden/gradientdesk-imac-method.txt`.
+The breakpoint table is the source of truth. GradientDesk adds a block to the comment header with only what the table can't hold: method name, application, column, standard flow and pressure limit, and per phase its name, type, unit, length in CV, Default flow and pump wash lines. A checksum of the table tells a re-import whether the table was edited after GradientDesk wrote it. Comments must come before the table and lines must stay within 100 characters (§1, §3), so the block is compact and wraps. Code: `src/domain/methodTxt.ts`; byte-exact reference: `tests/golden/gradientdesk-imac-method.txt`.
 
 ```
 ** GradientDesk method
-** [method] format=gradientdesk; version=2; name=IMAC_HisTrapHP5ml; application=imac
+** [method] format=gradientdesk; version=4; name=IMAC_HisTrapHP5ml; application=imac
+**   standardFlow=none; pressureLimit=none; table=1fd7f387
 ** [column] id=histrap-hp-5-ml; name=HisTrap HP 5 ml; manufacturer=Cytiva; cv=5; flow=20; rec=5
 **   p=0.5; apps=imac
-** [phase 1] name=Equilibration; type=equil; length=5; unit=CV; startB=0; endB=0; gradient=no
-**   flow=5; fraction=0; inletA=1; injection=Load; autozero=yes
+** [phase 1] name=Equilibration; type=equil; unit=CV; length=5; flowDefault=yes
+** [phase 2] name=Sample load; type=sample; unit=ml; flowDefault=no
 ...
 *****************************************************************
 ```
 
 - The block starts at the line `** GradientDesk method` and ends at the header's closing `*****` line. Sections are `** [method]`, `** [column]`, `** [phase N]`, followed on the same line by entries `key=value`, separated by `;`. When a line would exceed 96 characters, the section continues on lines starting with `**   `. A value too long for one line is split: `key=<first part>` then `key+=<next part>` (appended on import). Entries are split at the first `=`; spaces around keys and values are not significant.
-- Keys are the method data field names (docs/SPEC.md "Method data"; `[method]` also has `standardFlow` and `pressureLimit`, `none` = the column's value; phases have `flowDefault`); pump wash phases add `lines` (comma-separated, wash order, e.g. `lines=B, A8, A1`); the column's `recEstimated`, `note` and `custom` are written only when set. Numbers as written by JavaScript (`String(n)`), booleans `yes` / `no`, unknown max flow `none`, `apps` comma-separated.
+- `[method]`: `format`, `version` (4), `name`, `application`, `standardFlow` and `pressureLimit` (`none` = the column's value) and `table`, the checksum. `[column]`: the column fields (docs/SPEC.md "Method data"); `recEstimated`, `note` and `custom` only when set. `[phase N]`, one per phase in order: `name`, `type`, `unit`, `length` (only for `unit=CV`: the planned CV value, since the table has ml rounded to 0.1), `flowDefault`, and for pump wash phases `lines` (comma-separated, wash order, e.g. `lines=B, A8, A1`). Volumes, %B, flow, fraction size, inlet, injection valve and autozero are not in the block: they come from the table. Numbers as written by JavaScript (`String(n)`), booleans `yes` / `no`, unknown max flow `none`, `apps` comma-separated.
+- `table` is the CRC-32 (IEEE, 8 lowercase hex digits) of the `Max pressure (kPa)` line followed by every breakpoint row, each with all whitespace removed, joined with `\n`. Spaces, line endings and the comment header don't change it.
 - Values are ASCII: `\` is written as `\\`, `;` and any character outside 0x20–0x7E as `\uXXXX` (UTF-16 code unit), and leading or trailing spaces (of the value and of each split part) as `\u0020`. Parts are never split inside an escape.
 - No timestamp: the same method always gives the same file.
-- Import: the block is used only when the breakpoints it produces equal the file's rows (compared without spaces). Otherwise, or when the block can't be read, the table is imported (§10) with a message. A file without a block is imported from the table.
+- Import: the table is read as in §10. When the checksum matches, the block's phases are laid over the table's in order (a pump wash takes one table phase per line): name, type, unit and Default flow from the block, CV lengths from the block, everything else from the table; a Default flow phase gets the standard flow. The result must give back exactly the file's rows. Otherwise (checksum or rows differ: the table was edited elsewhere) the phases come from the table alone, the pressure limit from `Max pressure`, and name, application, column and standard flow from the block, with a message. A block that can't be read is ignored with a message; a file without a block is imported from the table.
+- Values finer than the table (%B decimals, flow and fraction size below 0.1, ml lengths off the 0.1 grid) come back as the table has them, which is also what the instrument runs.
+- Versions 1–3 of the block held the whole method file (every phase field, no checksum; `tests/golden/legacy-full-block.txt`). They are still read: the block is used when the breakpoints it produces equal the file's rows, otherwise as above.
 - Older GradientDesk files had the block after the breakpoint table, one `** key = value` line per entry; PrimeView rejects them, but GradientDesk still imports them (`tests/golden/legacy-trailing-block.txt`).
